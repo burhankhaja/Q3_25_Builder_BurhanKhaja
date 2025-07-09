@@ -8,7 +8,7 @@ import {
 } from "@metaplex-foundation/umi";
 import { createNft, mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 
-import wallet from "../../Turbin3-wallet.json";
+import wallet from "../../../Turbin3-wallet.json";
 import base58 from "bs58";
 
 // Setup

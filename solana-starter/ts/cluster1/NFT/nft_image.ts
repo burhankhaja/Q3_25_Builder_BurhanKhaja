@@ -1,4 +1,4 @@
-import wallet from "../../Turbin3-wallet.json";
+import wallet from "../../../Turbin3-wallet.json";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
   createGenericFile,

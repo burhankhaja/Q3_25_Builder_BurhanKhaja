@@ -1,6 +1,6 @@
 import { Keypair, Connection, Commitment, PublicKey } from "@solana/web3.js";
 import { createMint } from '@solana/spl-token';
-import wallet from "../../Turbin3-wallet.json"
+import wallet from "../../../Turbin3-wallet.json"
 
 // Import our keypair from the wallet file
 const keypair = Keypair.fromSecretKey(new Uint8Array(wallet));
