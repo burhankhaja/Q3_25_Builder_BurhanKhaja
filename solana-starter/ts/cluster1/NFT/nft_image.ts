@@ -19,10 +19,10 @@ umi.use(signerIdentity(signer));
 (async () => {
   try {
     // Load local image
-    const imageBuffer = await readFile("jeff.png");
+    const imageBuffer = await readFile("../jeff.png");
 
     // create a generic file from image
-    const imageFile = createGenericFile(imageBuffer, "jeff.png", {
+    const imageFile = createGenericFile(imageBuffer, "../jeff.png", {
       contentType: "image/png",
     });
 
