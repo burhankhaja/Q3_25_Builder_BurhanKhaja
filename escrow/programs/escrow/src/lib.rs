@@ -30,6 +30,8 @@ pub mod escrow {
     }
 
     pub fn take_offer(ctx: Context<TakeOffer>, _extra_seed: String) -> Result<()> {
+        ctx.accounts.deposit()?;
+        ctx.accounts.withdraw_and_close_vault(_extra_seed)?;
         Ok(())
     }
 
@@ -51,6 +53,8 @@ pub mod escrow {
     ) -> Result<()> {
         ctx.accounts.get_maker_escrow_data_log()
     }
+
+    //@Todo: update code with professional natspec and most importantly thorough test scripts
 }
 
 /*
