@@ -29,7 +29,7 @@ pub mod escrow {
         Ok(())
     }
 
-    pub fn take_offer(ctx: Context<TakeOffer>) -> Result<()> {
+    pub fn take_offer(ctx: Context<TakeOffer>, _extra_seed: String) -> Result<()> {
         Ok(())
     }
 

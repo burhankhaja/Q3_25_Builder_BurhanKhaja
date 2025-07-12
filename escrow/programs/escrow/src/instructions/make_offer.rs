@@ -16,17 +16,17 @@ pub struct MakeOffer<'info> {
     #[account(
         mint::token_program = token_program
     )]
-    pub offered_mint: InterfaceAccount<'info, Mint>,
+    pub mint_a: InterfaceAccount<'info, Mint>,
 
     #[account(
         mint::token_program = token_program
     )]
-    pub expected_mint: InterfaceAccount<'info, Mint>,
+    pub mint_b: InterfaceAccount<'info, Mint>,
 
     // since i have to take tokens from user , pass his ATA
     #[account(
         mut,
-        associated_token::mint = offered_mint,
+        associated_token::mint = mint_a,
         associated_token::authority = maker,
         associated_token::token_program = token_program,
     )]
@@ -46,7 +46,7 @@ pub struct MakeOffer<'info> {
     // create an ata for escrow
     #[account(
         mut,
-        associated_token::mint = offered_mint,
+        associated_token::mint = mint_a,
         associated_token::authority = escrow,
         associated_token::token_program = token_program,
     )]
@@ -75,8 +75,8 @@ impl<'info> MakeOffer<'info> {
     ) -> Result<()> {
         *self.escrow = Escrow {
             maker: self.maker.key(),
-            offered_mint: self.offered_mint.key(),
-            expected_mint: self.expected_mint.key(),
+            mint_a: self.mint_a.key(),
+            mint_b: self.mint_b.key(),
             offered_amount: deposit_amount,
             expected_amount: expect_amount,
             bump: bump.escrow,
@@ -90,14 +90,14 @@ impl<'info> MakeOffer<'info> {
         let transfer_accounts = TransferChecked {
             // Transfer tokens from makers offered token ata to vault
             from: self.maker_offered_ata.to_account_info(),
-            mint: self.offered_mint.to_account_info(),
+            mint: self.mint_a.to_account_info(),
             to: self.vault.to_account_info(),
             authority: self.maker.to_account_info(),
         };
 
         let cpi_context = CpiContext::new(self.token_program.to_account_info(), transfer_accounts);
 
-        transfer_checked(cpi_context, deposit_amount, self.offered_mint.decimals)?;
+        transfer_checked(cpi_context, deposit_amount, self.mint_a.decimals)?;
 
         Ok(())
     }

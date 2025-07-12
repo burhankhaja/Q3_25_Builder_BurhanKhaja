@@ -24,8 +24,8 @@ pub struct CancelOffer<'info> {
 
     #[account(
         mut,
-        // associated_token::mint = escrow.offered_mint, //@audit :: any issues ?? since escrow.offered_mint is pubkey && not the InterfaceAccount<'info, Mint>
-        associated_token::mint = offered_mint,
+        // associated_token::mint = escrow.mint_a, //@audit :: any issues ?? since escrow.mint_a is pubkey && not the InterfaceAccount<'info, Mint>
+        associated_token::mint = mint_a,
         associated_token::authority = escrow,
         associated_token::token_program = token_program,
     )]
@@ -34,17 +34,17 @@ pub struct CancelOffer<'info> {
     // since tokens will be sent to maker offered ata :: dervie that
     #[account(
         mut,
-        associated_token::mint = offered_mint,
+        associated_token::mint = mint_a,
         associated_token::authority = maker,
         associated_token::token_program = token_program,
     )]
     pub maker_offered_ata: InterfaceAccount<'info, TokenAccount>,
 
-    // since you can't call to_account_info() during cpi context on escrow.offered_mint which is of type PUbkey
+    // since you can't call to_account_info() during cpi context on escrow.mint_a which is of type PUbkey
     #[account(
         mint::token_program = token_program
     )]
-    pub offered_mint: InterfaceAccount<'info, Mint>,
+    pub mint_a: InterfaceAccount<'info, Mint>,
 
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -55,8 +55,8 @@ impl<'info> CancelOffer<'info> {
     pub fn withdraw_offered_amounts(&mut self, extra_seed: &String) -> Result<()> {
         let transfer_accounts = TransferChecked {
             from: self.vault.to_account_info(),
-            // mint: self.escrow.offered_mint.to_account_info(), //@issue :: cant call to_account_info on type PUbkey
-            mint: self.offered_mint.to_account_info(),
+            // mint: self.escrow.mint_a.to_account_info(), //@issue :: cant call to_account_info on type PUbkey
+            mint: self.mint_a.to_account_info(),
             to: self.maker_offered_ata.to_account_info(),
             authority: self.maker.to_account_info(),
         };
@@ -76,11 +76,7 @@ impl<'info> CancelOffer<'info> {
             signer_seeds,
         ); //@audit:: what if self.token_program was defined outside of function into the impl, how would you have the ability to access it ? figure out later ??
 
-        transfer_checked(
-            transfer_context,
-            self.vault.amount,
-            self.offered_mint.decimals,
-        )?;
+        transfer_checked(transfer_context, self.vault.amount, self.mint_a.decimals)?;
 
         Ok(())
     }
