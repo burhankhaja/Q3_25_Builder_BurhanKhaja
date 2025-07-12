@@ -6,3 +6,6 @@ pub use take_offer::*;
 
 pub mod cancel_offer;
 pub use cancel_offer::*;
+
+pub mod get_offer;
+pub use get_offer::*;

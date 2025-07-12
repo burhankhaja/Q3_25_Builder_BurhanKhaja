@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[account]
-#[derive(InitSpace)]
+#[derive(InitSpace, Debug)] // so that you can log this entirely via get_offer crate !!!
 pub struct Escrow {
     pub maker: Pubkey,
     pub offered_mint: Pubkey,  // Token Mint That user is offering

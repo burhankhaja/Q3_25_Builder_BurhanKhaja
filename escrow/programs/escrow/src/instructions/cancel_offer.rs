@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token,
     token_2022::{close_account, transfer_checked, CloseAccount, TransferChecked},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
@@ -25,7 +24,8 @@ pub struct CancelOffer<'info> {
 
     #[account(
         mut,
-        associated_token::mint = escrow.offered_mint, //@audit :: any issues ?? since escrow.offered_mint is pubkey && not the InterfaceAccount<'info, Mint>
+        // associated_token::mint = escrow.offered_mint, //@audit :: any issues ?? since escrow.offered_mint is pubkey && not the InterfaceAccount<'info, Mint>
+        associated_token::mint = offered_mint,
         associated_token::authority = escrow,
         associated_token::token_program = token_program,
     )]
@@ -34,7 +34,7 @@ pub struct CancelOffer<'info> {
     // since tokens will be sent to maker offered ata :: dervie that
     #[account(
         mut,
-        associated_token::mint = escrow.offered_mint,
+        associated_token::mint = offered_mint,
         associated_token::authority = maker,
         associated_token::token_program = token_program,
     )]
@@ -52,7 +52,7 @@ pub struct CancelOffer<'info> {
 }
 
 impl<'info> CancelOffer<'info> {
-    pub fn withdraw_offered_amounts(&mut self) -> Result<()> {
+    pub fn withdraw_offered_amounts(&mut self, extra_seed: &String) -> Result<()> {
         let transfer_accounts = TransferChecked {
             from: self.vault.to_account_info(),
             // mint: self.escrow.offered_mint.to_account_info(), //@issue :: cant call to_account_info on type PUbkey
@@ -61,10 +61,52 @@ impl<'info> CancelOffer<'info> {
             authority: self.maker.to_account_info(),
         };
 
+        // let signer_seeds: &[&[&[u8]]] = &[&[b"escrow", self.maker.key().as_ref(), extra_seed.as_ref(), &self.escrow.bump.to_le_bytes()]]; // self.maker.key()  --> error:: temporary value dropped while borrowing
+
+        let signer_seeds: &[&[&[u8]]] = &[&[
+            b"escrow",
+            self.escrow.maker.as_ref(),
+            extra_seed.as_ref(),
+            &self.escrow.bump.to_le_bytes(),
+        ]]; // self.maker.key()  --> error:: temporary value dropped while borrowing
+
+        let transfer_context = CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            transfer_accounts,
+            signer_seeds,
+        ); //@audit:: what if self.token_program was defined outside of function into the impl, how would you have the ability to access it ? figure out later ??
+
+        transfer_checked(
+            transfer_context,
+            self.vault.amount,
+            self.offered_mint.decimals,
+        )?;
+
         Ok(())
     }
 
-    pub fn close_vault(&mut self) -> Result<()> {
+    pub fn close_vault(&mut self, extra_seed: &String) -> Result<()> {
+        let close_accounts = CloseAccount {
+            account: self.vault.to_account_info(),
+            destination: self.maker.to_account_info(),
+            authority: self.escrow.to_account_info(),
+        };
+
+        let signer_seeds: &[&[&[u8]]] = &[&[
+            b"escrow",
+            self.escrow.maker.as_ref(),
+            extra_seed.as_ref(),
+            &self.escrow.bump.to_le_bytes(),
+        ]];
+
+        let close_context = CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            close_accounts,
+            signer_seeds,
+        );
+
+        close_account(close_context)?;
+
         Ok(())
     }
 
