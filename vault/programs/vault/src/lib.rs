@@ -3,7 +3,7 @@ pub mod error;
 pub mod instructions;
 pub mod state;
 
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, system_program};
 
 pub use constants::*;
 pub use instructions::*;
@@ -15,7 +15,7 @@ declare_id!("2xmjzsZGrbhDYqjFyZCxjx4xpGAnexGLwJxmA9Qvn8Yd");
 pub mod vault {
     use super::*;
 
-    pub fn initVaultAccount(ctx: Context<InitializeAccount>) -> Result<()> {
+    pub fn init_vault_account(ctx: Context<InitializeAccount>) -> Result<()> {
         ctx.accounts.initialize(ctx.bumps.user_vault)?;
 
         msg!(
@@ -32,13 +32,23 @@ pub mod vault {
         // Ok(())
     }
 
+    /*
+    The reason @shrinath used SystemAccount<PDA> is like using pda but transferring its ownership to system program
+    such that system program can easily modify its sol balance in and out without any ownership issues
+
+    You would have save a ton of code using shrinath's methods
+    anyway use this methods in earlier commit ----------------> "UNORTHODOX COMMIT and mention that in README"
+    make sure to have a final commit with shrinath's logic
+
+     */
     pub fn withdraw(ctx: Context<FundFlow>, amount: u64) -> Result<()> {
-        ctx.accounts.withdraw(amount)
-        // Ok(())
+        // ctx.accounts.withdraw(amount) //@audit-issue problemetic ;:: since system doenst own pda //// best to use if you had separate pda for storing vault and its ownership was transferred to systemProgram
+
+        ctx.accounts.withdraw_unorthodox(amount)
     }
 
     // close
-    pub fn closeAccount(ctx: Context<CloseVaultAccount>) -> Result<()> {
+    pub fn close_account(ctx: Context<CloseVaultAccount>) -> Result<()> {
         msg!(
             "Your vault account ` {:?} ` has been closed and all the rent stored has been repaid ",
             ctx.accounts.user_vault.key()
