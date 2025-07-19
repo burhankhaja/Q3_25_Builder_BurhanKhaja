@@ -45,21 +45,31 @@ pub mod amm {
         max_y: u64,
         deadline: i64,
     ) -> Result<()> {
-        ctx.accounts.deposit(_pool_id, mint_lp_amount)
+        ctx.accounts
+            .deposit(_pool_id, mint_lp_amount, max_x, max_y, deadline)
     }
 
     pub fn withdraw_liquidity(
         ctx: Context<Liquidity>,
         _pool_id: u16,
         burn_lp_amount: u64,
-        max_x: u64,
-        max_y: u64,
+        min_x: u64,
+        min_y: u64,
         deadline: i64,
     ) -> Result<()> {
-        Ok(())
+        ctx.accounts
+            .withdraw(_pool_id, burn_lp_amount, min_x, min_y, deadline)
     }
 
-    pub fn swap(ctx: Context<Swap>) -> Result<()> {
-        Ok(())
+    pub fn swap(
+        ctx: Context<Swap>,
+        _pool_id: u16,
+        is_x: bool,
+        amount_in: u64,
+        min_out: u64,
+        deadline: i64,
+    ) -> Result<()> {
+        ctx.accounts
+            .swap(_pool_id, is_x, amount_in, min_out, deadline)
     }
 }

@@ -21,13 +21,11 @@ pub struct CreatePool<'info> {
    )]
     pub pool_config: Account<'info, PoolConfig>,
 
-    // Further Accounts needed :
-    // mint_x
-    // mint_y
-    // vault_x
-    // vault_y
-    // mint_lp
+    // lets restrict token program
+    #[account(mint::token_program = token_program)]
     pub mint_x: Account<'info, Mint>,
+
+    #[account(mint::token_program = token_program)]
     pub mint_y: Account<'info, Mint>,
 
     // program owned ata vault for both mints

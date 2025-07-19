@@ -14,7 +14,10 @@ pub struct Liquidity<'info> {
     pub user: Signer<'info>,
 
     /// deposit tokens
+    #[account(mint::token_program = token_program)]
     pub mint_x: Account<'info, Mint>,
+
+    #[account(mint::token_program = token_program)]
     pub mint_y: Account<'info, Mint>,
 
     // pool config && lp_mint of pool_id
@@ -83,7 +86,14 @@ pub struct Liquidity<'info> {
 }
 
 impl<'info> Liquidity<'info> {
-    pub fn deposit(&mut self, _pool_id: u16, mint_lp_amount: u64) -> Result<()> {
+    pub fn deposit(
+        &mut self,
+        _pool_id: u16,
+        mint_lp_amount: u64,
+        max_x: u64,
+        max_y: u64,
+        deadline: i64,
+    ) -> Result<()> {
         // validate key states, locked , amount , deadline, slippage
 
         /////@later :: add security_first logic for first depositor edge case with normal flow case too
@@ -91,6 +101,8 @@ impl<'info> Liquidity<'info> {
         // take tokens from user and deposit them to vault atas
         let amount_x = 0; //@audit:: temporary value until i add correct logic for different edge cases
         let amount_y = 0;
+
+        //@audit :: validate amounts against slippage
 
         self.transfer_from_user(amount_x, amount_y)?;
 
@@ -159,7 +171,14 @@ impl<'info> Liquidity<'info> {
     ///
     ///
     /// @todo:: pass signer seed from withdraw to transfer_to_user && burn as parameters
-    pub fn withdraw(&mut self, _pool_id: u16, burn_lp_amount: u64) -> Result<()> {
+    pub fn withdraw(
+        &mut self,
+        _pool_id: u16,
+        burn_lp_amount: u64,
+        min_x: u64,
+        min_y: u64,
+        deadline: i64,
+    ) -> Result<()> {
         // validate key states, lock, amounts, slippage, expiration,  first deposit vs normal deposit cases
 
         //@later add security_first fix of withdraw logic
@@ -175,6 +194,8 @@ impl<'info> Liquidity<'info> {
         /// transfer mint_x and mint_y to user's atas
         let amount_x = 0;
         let amount_y = 0; //@audit :: temporary value until fix
+
+        //@audit validate amounts_x and amounts_y against slippage
 
         self.transfer_to_user(amount_x, amount_y, signer_seeds);
 
