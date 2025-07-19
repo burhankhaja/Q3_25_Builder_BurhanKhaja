@@ -45,7 +45,7 @@ pub mod amm {
         max_y: u64,
         deadline: i64,
     ) -> Result<()> {
-        Ok(())
+        ctx.accounts.deposit(_pool_id, mint_lp_amount)
     }
 
     pub fn withdraw_liquidity(

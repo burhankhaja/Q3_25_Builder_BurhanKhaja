@@ -1,4 +1,4 @@
-use crate::{error::ErrorCode, Global, PoolConfig};
+use crate::{error::ErrorCode, PoolConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -11,14 +11,6 @@ use anchor_spl::{
 pub struct CreatePool<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-
-    #[account(
-    mut,
-    seeds = [b"global"],
-    bump = global.bump,
-
-   )]
-    pub global: Account<'info, Global>, //@audit-issue :: why am i even using global account here ???
 
     #[account(
      init,

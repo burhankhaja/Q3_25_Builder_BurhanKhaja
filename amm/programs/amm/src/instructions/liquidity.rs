@@ -89,8 +89,8 @@ impl<'info> Liquidity<'info> {
         /////@later :: add security_first logic for first depositor edge case with normal flow case too
 
         // take tokens from user and deposit them to vault atas
-        let amount_x= 0; //@audit:: temporary value until i add correct logic for different edge cases
-        let amount_y= 0;  
+        let amount_x = 0; //@audit:: temporary value until i add correct logic for different edge cases
+        let amount_y = 0;
 
         self.transfer_from_user(amount_x, amount_y)?;
 
@@ -100,42 +100,6 @@ impl<'info> Liquidity<'info> {
         Ok(())
     }
 
-    /*
-
-       let (
-           from,
-           to,
-           mint,
-           decimals
-       ) = match is_x {
-           true => (
-
-           ),
-           false => (
-               self.user_ata_y.to_account_info(),
-               self.vault_y.to_account_info(),
-               self.mint_y.to_account_info(),
-               self.mint_y.decimals
-           ),
-       };
-
-       let cpi_program = self.token_program.to_account_info();
-
-
-       let cpi_accounts = TransferChecked {
-           from,
-           to,
-           authority: self.user.to_account_info(),  // User signs the transfer
-           mint
-       };
-
-       let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
-
-
-       transfer_checked(cpi_context, amount, decimals)
-
-    */
-
     pub fn transfer_from_user(&mut self, amount_x: u64, amount_y: u64) -> Result<()> {
         let cpi_program = self.token_program.to_account_info();
 
@@ -143,14 +107,14 @@ impl<'info> Liquidity<'info> {
             from: self.user_ata_x.to_account_info(),
             to: self.vault_x.to_account_info(),
             mint: self.mint_x.to_account_info(),
-            authority: self.user.to_account_info(), 
+            authority: self.user.to_account_info(),
         };
 
         let tranfer_y_cpi_accounts = TransferChecked {
             from: self.user_ata_y.to_account_info(),
             to: self.vault_y.to_account_info(),
             mint: self.mint_y.to_account_info(),
-            authority: self.user.to_account_info(), 
+            authority: self.user.to_account_info(),
         };
 
         let transfer_x_cpi_context = CpiContext::new(cpi_program.clone(), tranfer_x_cpi_accounts);
@@ -189,16 +153,83 @@ impl<'info> Liquidity<'info> {
         Ok(())
     }
 
-    /// withdraw user
+    ///// withdraw user
+    ///
+    ///
+    ///
+    ///
     /// @todo:: pass signer seed from withdraw to transfer_to_user && burn as parameters
-    pub fn withdraw(&mut self) -> Result<()> {
+    pub fn withdraw(&mut self, _pool_id: u16, burn_lp_amount: u64) -> Result<()> {
+        // validate key states, lock, amounts, slippage, expiration,  first deposit vs normal deposit cases
+
+        //@later add security_first fix of withdraw logic
+
+        let pool_id = _pool_id.to_be_bytes();
+
+        let signer_seeds: &[&[&[u8]]] = &[&[
+            b"pool_config",
+            &pool_id, // or pool_id.as_ref() --> same thing
+            &[self.pool_config.config_bump],
+        ]];
+
+        /// transfer mint_x and mint_y to user's atas
+        let amount_x = 0;
+        let amount_y = 0; //@audit :: temporary value until fix
+
+        self.transfer_to_user(amount_x, amount_y, signer_seeds);
+
+        /// burn expected lp amounts from user
+        self.burn(burn_lp_amount, signer_seeds)?;
+
         Ok(())
     }
 
-    pub fn transfer_to_user(&mut self) -> Result<()> {
+    pub fn transfer_to_user(
+        &mut self,
+        amount_x: u64,
+        amount_y: u64,
+        signer_seeds: &[&[&[u8]]],
+    ) -> Result<()> {
+        let cpi_program = self.token_program.to_account_info();
+
+        let tranfer_x_cpi_accounts = TransferChecked {
+            from: self.vault_x.to_account_info(),
+            to: self.user_ata_x.to_account_info(),
+            mint: self.mint_x.to_account_info(),
+            authority: self.pool_config.to_account_info(),
+        };
+
+        let tranfer_y_cpi_accounts = TransferChecked {
+            from: self.vault_y.to_account_info(),
+            to: self.user_ata_y.to_account_info(),
+            mint: self.mint_y.to_account_info(),
+            authority: self.pool_config.to_account_info(),
+        };
+
+        let transfer_x_cpi_context = CpiContext::new(cpi_program.clone(), tranfer_x_cpi_accounts);
+        let transfer_y_cpi_context = CpiContext::new(cpi_program.clone(), tranfer_y_cpi_accounts);
+
+        transfer_checked(transfer_x_cpi_context, amount_x, self.mint_x.decimals)?;
+        transfer_checked(transfer_y_cpi_context, amount_y, self.mint_y.decimals)?;
+
         Ok(())
     }
-    pub fn burn(&mut self) -> Result<()> {
+
+    pub fn burn(&mut self, burn_lp_amount: u64, signer_seeds: &[&[&[u8]]]) -> Result<()> {
+        let burn_cpi_accounts = Burn {
+            mint: self.mint_lp.to_account_info(),
+            from: self.user_ata_lp.to_account_info(),
+            authority: self.user.to_account_info(),
+        };
+
+        let burn_cpi_context = CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            burn_cpi_accounts,
+            signer_seeds,
+        );
+
+        burn(burn_cpi_context, burn_lp_amount)?;
+
         Ok(())
     }
 }
