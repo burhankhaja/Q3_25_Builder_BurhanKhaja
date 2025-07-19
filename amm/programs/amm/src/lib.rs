@@ -45,15 +45,15 @@ pub mod amm {
     }
 
     // /// User functions
-    pub fn create_pool(ctx: Context<CreatePool>, _pool_id: u64, fee: u16) -> Result<()> {
+    pub fn create_pool(ctx: Context<CreatePool>, _pool_id: u16, fee: u16) -> Result<()> {
         ctx.accounts.create_pool(_pool_id, fee, &ctx.bumps)
     }
 
-    pub fn deposit_liquidity(ctx: Context<Liquidity>) -> Result<()> {
+    pub fn deposit_liquidity(ctx: Context<Liquidity>,  _pool_id: u16, mint_lp_amount: u64, max_x: u64, max_y: u64, deadline: i64) -> Result<()> {
         Ok(())
     }
 
-    pub fn withdraw_liquidity(ctx: Context<Liquidity>) -> Result<()> {
+    pub fn withdraw_liquidity(ctx: Context<Liquidity>, _pool_id: u16, burn_lp_amount: u64, max_x: u64, max_y: u64, deadline: i64) -> Result<()> {
         Ok(())
     }
 

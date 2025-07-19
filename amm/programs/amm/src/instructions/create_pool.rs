@@ -72,7 +72,7 @@ pub struct CreatePool<'info> {
 }
 
 impl<'info> CreatePool<'info> {
-    pub fn create_pool(&mut self, _pool_id: u64, fee: u16, bumps: &CreatePoolBumps) -> Result<()> {
+    pub fn create_pool(&mut self, _pool_id: u16, fee: u16, bumps: &CreatePoolBumps) -> Result<()> {
         //@dev lets only allow maximum of 0.9% fee, note that pool can have 0% fee rate
         require!(fee <= 90, ErrorCode::HighFees);
 

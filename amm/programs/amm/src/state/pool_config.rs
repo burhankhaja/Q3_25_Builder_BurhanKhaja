@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(InitSpace)]
 pub struct PoolConfig {
-    pub pool_id: u64,
+    pub pool_id: u16,
     pub mint_x: Pubkey,
     pub mint_y: Pubkey,
     pub fee: u16,
