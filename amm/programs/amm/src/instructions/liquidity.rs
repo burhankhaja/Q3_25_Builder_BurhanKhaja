@@ -1,3 +1,4 @@
+use crate::error::ErrorCode;
 use crate::PoolConfig;
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -95,6 +96,12 @@ impl<'info> Liquidity<'info> {
         deadline: i64,
     ) -> Result<()> {
         // validate key states, locked , amount , deadline, slippage
+        require!(
+            Clock::get()?.unix_timestamp <= deadline,
+            ErrorCode::ExpiredTx
+        );
+        require!(!self.pool_config.locked, ErrorCode::LockedPoolId);
+        require!(mint_lp_amount > 0, ErrorCode::InvalidAmount);
 
         /////@later :: add security_first logic for first depositor edge case with normal flow case too
 
@@ -180,6 +187,12 @@ impl<'info> Liquidity<'info> {
         deadline: i64,
     ) -> Result<()> {
         // validate key states, lock, amounts, slippage, expiration,  first deposit vs normal deposit cases
+        require!(
+            Clock::get()?.unix_timestamp <= deadline,
+            ErrorCode::ExpiredTx
+        );
+        require!(!self.pool_config.locked, ErrorCode::LockedPoolId);
+        require!(burn_lp_amount > 0, ErrorCode::InvalidAmount);
 
         //@later add security_first fix of withdraw logic
 

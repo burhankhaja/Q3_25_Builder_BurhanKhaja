@@ -4,7 +4,8 @@ use anchor_spl::{
     token::{transfer_checked, Mint, Token, TokenAccount, TransferChecked},
 };
 
-use crate::PoolConfig;
+use crate::{error::ErrorCode, PoolConfig};
+use constant_product_curve::{ConstantProduct, LiquidityPair};
 
 #[derive(Accounts)]
 #[instruction(_pool_id: u16)]
@@ -85,14 +86,41 @@ impl<'info> Swap<'info> {
         min_out: u64,
         deadline: i64,
     ) -> Result<()> {
-        //Deadline, pool lock and amount validation
+        require!(
+            Clock::get()?.unix_timestamp <= deadline,
+            ErrorCode::ExpiredTx
+        );
+        require!(!self.pool_config.locked, ErrorCode::LockedPoolId);
+        require!(amount_in > 0, ErrorCode::InvalidAmount);
 
         // curve lib init and get swap result
-        // validate swapresult.* > 0
+        let mut curve = ConstantProduct::init(
+            self.vault_x.amount,
+            self.vault_y.amount,
+            self.mint_lp.supply,
+            self.pool_config.fee,
+            Some(self.mint_lp.decimals),
+        )
+        .unwrap(); //@note :: technically you could have used last param as None , since precison set to None defaults to 1e6
+                   //@dev :: do some error mapping later
 
-        // @audit :: temporary value until logic updated
-        let deposit_amount = 0;
-        let withdraw_amount = 0;
+        //@audit-issue :: infl attacks , add fix via state tracking ?
+
+        /// resultant pair will be swapped for the other
+        let pair = match is_x {
+            true => LiquidityPair::X,
+            false => LiquidityPair::Y,
+        };
+
+        let swap_result = curve.swap(pair, amount_in, min_out).unwrap(); //@audit :: temporary unwarp() fix :: later map_errors properly
+
+        let deposit_amount = swap_result.deposit;
+        let withdraw_amount = swap_result.withdraw;
+
+        require!(
+            deposit_amount > 0 && withdraw_amount > 0,
+            ErrorCode::InvalidAmount
+        );
 
         // settle and take tokens
         self.settle(is_x, deposit_amount)?;

@@ -8,6 +8,9 @@ pub enum ErrorCode {
     #[msg("Invalid Lock authority")]
     InvalidAuthority,
 
+    #[msg("given amounts are not accepted")]
+    InvalidAmount,
+
     #[msg("Fees exceeds max ceiling")]
     HighFees,
 
@@ -15,4 +18,10 @@ pub enum ErrorCode {
         "Pool is already in the expected state, make sure to toggle lock / unlock state correctly"
     )]
     SameLockState,
+
+    #[msg("pool is in locked stated")]
+    LockedPoolId,
+
+    #[msg("the deadline for transaction has expired")]
+    ExpiredTx,
 }
