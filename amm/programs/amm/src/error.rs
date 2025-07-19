@@ -11,6 +11,8 @@ pub enum ErrorCode {
     #[msg("Fees exceeds max ceiling")]
     HighFees,
 
-    #[msg("Pool is already in the expected state, make sure to toggle lock / unlock state correctly")]
+    #[msg(
+        "Pool is already in the expected state, make sure to toggle lock / unlock state correctly"
+    )]
     SameLockState,
 }

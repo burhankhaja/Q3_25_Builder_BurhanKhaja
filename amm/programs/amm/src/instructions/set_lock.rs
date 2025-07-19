@@ -34,7 +34,6 @@ impl<'info> SetLock<'info> {
 
         require!(lock == !self.pool_config.locked, ErrorCode::SameLockState);
 
-       
         self.pool_config.locked = lock;
 
         Ok(())

@@ -18,7 +18,7 @@ pub struct CreatePool<'info> {
     bump = global.bump,
 
    )]
-    pub global: Account<'info, Global>,
+    pub global: Account<'info, Global>, //@audit-issue :: why am i even using global account here ???
 
     #[account(
      init,
