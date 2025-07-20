@@ -1,12 +1,16 @@
 use crate::error::ErrorCode;
 use crate::PoolConfig;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::{create, get_associated_token_address};
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{
         burn, mint_to, transfer_checked, Burn, Mint, MintTo, Token, TokenAccount, TransferChecked,
     },
-};
+}; //@audit :: merge later in above statement
+
+use constant_product_curve::ConstantProduct;
+use integer_sqrt::IntegerSquareRoot;
 
 #[derive(Accounts)]
 #[instruction(_pool_id: u16)]
@@ -80,6 +84,16 @@ pub struct Liquidity<'info> {
     )]
     pub user_ata_lp: Account<'info, TokenAccount>,
 
+    // /// Optional ATA for mint_lp owned by system_program (used to lock minimum_liquidity on bootstrap)
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = mint_lp,
+        associated_token::authority = system_program,
+        associated_token::token_program = token_program
+    )]
+    pub locked_liquidity_ata: Option<Account<'info, TokenAccount>>,
+
     /// Cpi programs
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -87,6 +101,7 @@ pub struct Liquidity<'info> {
 }
 
 impl<'info> Liquidity<'info> {
+    const MIN_LOCKED_LIQUIDITY: u64 = 1_000; //@audit :: should i scale this with mint_lp.decimals , what if some mint_lp has 24 decimals ?
     pub fn deposit(
         &mut self,
         _pool_id: u16,
@@ -95,7 +110,6 @@ impl<'info> Liquidity<'info> {
         max_y: u64,
         deadline: i64,
     ) -> Result<()> {
-        // validate key states, locked , amount , deadline, slippage
         require!(
             Clock::get()?.unix_timestamp <= deadline,
             ErrorCode::ExpiredTx
@@ -103,18 +117,50 @@ impl<'info> Liquidity<'info> {
         require!(!self.pool_config.locked, ErrorCode::LockedPoolId);
         require!(mint_lp_amount > 0, ErrorCode::InvalidAmount);
 
-        /////@later :: add security_first logic for first depositor edge case with normal flow case too
+        let (amount_x, amount_y, lp_to_mint, is_first_deposit) = match self.mint_lp.supply == 0 {
+            ////  Case 1: First LP depositor (bootstrap)
+            true => {
+                // For initial mint, match exact max_x and max_y
+                let sqrt_k = (max_x as u128)
+                    .checked_mul(max_y as u128)
+                    .unwrap()
+                    .integer_sqrt();
 
-        // take tokens from user and deposit them to vault atas
-        let amount_x = 0; //@audit:: temporary value until i add correct logic for different edge cases
-        let amount_y = 0;
+                // let minimum_liquidity = 1_000;
+                let lp_tokens = sqrt_k
+                    .checked_sub(Self::MIN_LOCKED_LIQUIDITY as u128)
+                    .unwrap(); //do error handling later
 
-        //@audit :: validate amounts against slippage
+                // The goal is to lock the minimum liquidity in an account that no one can access or use, i.e,  effectively burning it!
 
+                //Psuedo_code :::  self.lock_minimum_liquidity(minimum_liquidity)?;
+
+                (max_x, max_y, lp_tokens, true)
+            }
+            //// Case 2: Normal LP deposit
+            false => {
+                let amounts = ConstantProduct::xy_deposit_amounts_from_l(
+                    self.vault_x.amount,
+                    self.vault_y.amount,
+                    self.mint_lp.supply,
+                    mint_lp_amount,
+                    1_000_000, // since mintlp has 6 decimals
+                )
+                .unwrap(); //do error handling later
+
+                require!(
+                    amounts.x <= max_x && amounts.y <= max_y,
+                    ErrorCode::BrokenSlippage
+                );
+                (amounts.x, amounts.y, mint_lp_amount as u128, false)
+            }
+        };
+
+        //// get deposit tokens from the user
         self.transfer_from_user(amount_x, amount_y)?;
 
-        // mint lp_amounts to user_lp_ata
-        self.mint(_pool_id, mint_lp_amount)?;
+        //// mint lp tokens for the user
+        self.mint(_pool_id, lp_to_mint as u64, is_first_deposit)?;
 
         Ok(())
     }
@@ -146,7 +192,12 @@ impl<'info> Liquidity<'info> {
         Ok(())
     }
 
-    pub fn mint(&mut self, _pool_id: u16, mint_lp_amount: u64) -> Result<()> {
+    pub fn mint(
+        &mut self,
+        _pool_id: u16,
+        mint_lp_amount: u64,
+        is_first_deposit: bool,
+    ) -> Result<()> {
         // Store pool_id locally so that it lives long enough and prevents "Temporary value dropped" errors
         let pool_id = _pool_id.to_le_bytes();
 
@@ -167,8 +218,35 @@ impl<'info> Liquidity<'info> {
         let mint_cpi_context =
             CpiContext::new_with_signer(cpi_program, mint_cpi_accounts, signer_seeds);
 
+        if is_first_deposit {
+            self.lock_minimum_liquidity(_pool_id, signer_seeds)?;
+        }
+
         mint_to(mint_cpi_context, mint_lp_amount)?;
 
+        Ok(())
+    }
+
+    pub fn lock_minimum_liquidity(
+        &mut self,
+        _pool_id: u16,
+        signer_seeds: &[&[&[u8]]],
+    ) -> Result<()> {
+        let pool_id = _pool_id.to_le_bytes();
+
+        let locked_account = self.locked_liquidity_ata.as_ref().unwrap(); //@later add error handling for Option.None case!
+
+        let cpi_ctx = CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            MintTo {
+                mint: self.mint_lp.to_account_info(),
+                to: locked_account.to_account_info(),
+                authority: self.pool_config.to_account_info(),
+            },
+            signer_seeds,
+        );
+
+        mint_to(cpi_ctx, Self::MIN_LOCKED_LIQUIDITY)?; //@notice use of `Self`` with capital S instead of self for accessing the constants defined inside impl
         Ok(())
     }
 
@@ -176,8 +254,6 @@ impl<'info> Liquidity<'info> {
     ///
     ///
     ///
-    ///
-    /// @todo:: pass signer seed from withdraw to transfer_to_user && burn as parameters
     pub fn withdraw(
         &mut self,
         _pool_id: u16,
@@ -194,9 +270,25 @@ impl<'info> Liquidity<'info> {
         require!(!self.pool_config.locked, ErrorCode::LockedPoolId);
         require!(burn_lp_amount > 0, ErrorCode::InvalidAmount);
 
-        //@later add security_first fix of withdraw logic
+        let amounts = ConstantProduct::xy_withdraw_amounts_from_l(
+            self.vault_x.amount,
+            self.vault_y.amount,
+            self.mint_lp.supply,
+            burn_lp_amount,
+            1_000_000, // since mint_lp has 6 decimals
+        )
+        .unwrap();
 
-        let pool_id = _pool_id.to_be_bytes();
+        let amount_x = amounts.x;
+        let amount_y = amounts.y;
+
+        // validate slippage
+        require!(
+            amount_x >= min_x && amount_y >= min_y,
+            ErrorCode::BrokenSlippage
+        );
+
+        let pool_id = _pool_id.to_be_bytes(); // to prevent "data moved" errors
 
         let signer_seeds: &[&[&[u8]]] = &[&[
             b"pool_config",
@@ -204,15 +296,8 @@ impl<'info> Liquidity<'info> {
             &[self.pool_config.config_bump],
         ]];
 
-        /// transfer mint_x and mint_y to user's atas
-        let amount_x = 0;
-        let amount_y = 0; //@audit :: temporary value until fix
-
-        //@audit validate amounts_x and amounts_y against slippage
-
-        self.transfer_to_user(amount_x, amount_y, signer_seeds);
-
-        /// burn expected lp amounts from user
+        //// burn users lp amounts in accordance to the transfer to deposit tokens to him
+        self.transfer_to_user(amount_x, amount_y, signer_seeds)?;
         self.burn(burn_lp_amount, signer_seeds)?;
 
         Ok(())
@@ -240,8 +325,10 @@ impl<'info> Liquidity<'info> {
             authority: self.pool_config.to_account_info(),
         };
 
-        let transfer_x_cpi_context = CpiContext::new(cpi_program.clone(), tranfer_x_cpi_accounts);
-        let transfer_y_cpi_context = CpiContext::new(cpi_program.clone(), tranfer_y_cpi_accounts);
+        let transfer_x_cpi_context =
+            CpiContext::new_with_signer(cpi_program.clone(), tranfer_x_cpi_accounts, signer_seeds);
+        let transfer_y_cpi_context =
+            CpiContext::new_with_signer(cpi_program.clone(), tranfer_y_cpi_accounts, signer_seeds);
 
         transfer_checked(transfer_x_cpi_context, amount_x, self.mint_x.decimals)?;
         transfer_checked(transfer_y_cpi_context, amount_y, self.mint_y.decimals)?;

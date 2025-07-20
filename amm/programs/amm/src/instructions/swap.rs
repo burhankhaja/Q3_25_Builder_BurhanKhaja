@@ -22,8 +22,8 @@ pub struct Swap<'info> {
     #[account(
         seeds = [b"pool_config", _pool_id.to_le_bytes().as_ref()],
         bump = pool_config.config_bump,
-        has_one = mint_x,  // Ensures mint_x matches the one in config
-        has_one = mint_y,  // Ensures mint_y matches the one in config
+        has_one = mint_x,
+        has_one = mint_y,
     )]
     pub pool_config: Account<'info, PoolConfig>,
 
@@ -121,6 +121,8 @@ impl<'info> Swap<'info> {
             deposit_amount > 0 && withdraw_amount > 0,
             ErrorCode::InvalidAmount
         );
+
+        //@dev::later ::: handle fee logic ::: make sure to take fee as commissions ??
 
         // settle and take tokens
         self.settle(is_x, deposit_amount)?;

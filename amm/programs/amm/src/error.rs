@@ -24,4 +24,7 @@ pub enum ErrorCode {
 
     #[msg("the deadline for transaction has expired")]
     ExpiredTx,
+
+    #[msg("Amounts dont respect expected slippage ")]
+    BrokenSlippage,
 }
