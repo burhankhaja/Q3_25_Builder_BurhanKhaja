@@ -70,6 +70,10 @@ pub mod amm {
         ctx.accounts.set_lock(lock)
     }
 
+    //////////////////////////////
+    /// User Functions
+    //////////////////////////////
+
     /// Create a new liquidity pool with specified fee.
     ///
     /// # Parameters
@@ -82,10 +86,6 @@ pub mod amm {
     pub fn create_pool(ctx: Context<CreatePool>, _pool_id: u16, fee: u16) -> Result<()> {
         ctx.accounts.create_pool(_pool_id, fee, &ctx.bumps)
     }
-
-    //////////////////////////////
-    /// User Functions
-    //////////////////////////////
 
     /// Deposit tokens into a liquidity pool to mint LP tokens.
     ///
