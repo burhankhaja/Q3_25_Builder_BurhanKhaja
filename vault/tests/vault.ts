@@ -110,7 +110,7 @@ describe("UserVault initialize", () => {
       const before = await provider.connection.getBalance(userVault);
 
       // // withdraw 1 sol from user vault
-      await withdraw(program, withdrawAmount); //@audit-issue:: withdraw fails:: maybe it is impossible to withdraw sol from pda unless closed 
+      await withdraw(program, withdrawAmount);  
 
       // // cache user vault balance after withdraw
       const after = await provider.connection.getBalance(userVault);
@@ -142,10 +142,10 @@ describe("UserVault initialize", () => {
 
 
   //     console.log(`beforeVaultBal: ${before}`)
-  //     console.log(`afterVaultBal: ${after}`) // try double quote
+  //     console.log(`afterVaultBal: ${after}`) 
 
   //     console.log(`beforeSignerBal: ${signerBeforeBal}`)
-  //     console.log(`afterSignerBal: ${signerAfterBal}`) // try double quote
+  //     console.log(`afterSignerBal: ${signerAfterBal}`) 
 
 
 
@@ -176,10 +176,10 @@ describe("UserVault initialize", () => {
 
 
   //     console.log(`beforeVaultBal: ${before}`)
-  //     console.log(`afterVaultBal: ${after}`) // try double quote
+  //     console.log(`afterVaultBal: ${after}`) 
 
   //     console.log(`beforeSignerBal: ${signerBeforeBal}`)
-  //     console.log(`afterSignerBal: ${signerAfterBal}`) // try double quote
+  //     console.log(`afterSignerBal: ${signerAfterBal}`) 
 
 
 
