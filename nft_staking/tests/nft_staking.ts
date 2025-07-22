@@ -3,7 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { NftStaking } from "../target/types/nft_staking";
 
 describe("nft_staking", () => {
-  // Configure the client to use the local cluster.
+  // @audit :: use before() later to spawn new signer on each test entry , but if you happen to add any admin checks in lib.rs how do you make sure that before logic will cooperate ??? 
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
@@ -18,4 +18,6 @@ describe("nft_staking", () => {
 
     await program.methods.initializeGlobalConfig(pointsPerStake, maxStake, freezePeriod).rpc();
   });
+
+  //@test those b"seeds"" vs b"seeds"".as_ref thing >>>>> findSync() and rust part where- seeds- array creation part-- during cpi context ...... ///
 });

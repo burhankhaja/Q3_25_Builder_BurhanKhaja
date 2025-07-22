@@ -38,14 +38,14 @@ pub struct InitializeGlobalConfig<'info> {
 impl<'info> InitializeGlobalConfig<'info> {
     pub fn init_global_config(
         &mut self,
-        points_per_stake: u8,
+        reward_tokens_per_day: u8,
         max_stake: u8,
         freeze_period: u32,
         bumps: &InitializeGlobalConfigBumps,
     ) -> Result<()> {
         self.global_config.set_inner(GlobalConfig {
             admin: *self.admin.key, //@note :: instead of dereference you can directly use self.admin.key() // with parenthesis
-            points_per_stake: points_per_stake,
+            reward_tokens_per_day: reward_tokens_per_day,
             max_stake: max_stake,
             freeze_period: freeze_period,
             reward_bump: bumps.reward_mint,
