@@ -34,6 +34,7 @@ declare_id!("FSgByULqSBqGPNV4r9cVTdqnrW89RUAKWD4c1UduqQbM");
 but do this only after adding oracle configs ?
 //!
 //!
+//! #: Maybe also add user_account closing mechanisms, remember that should thaw all staked nfts and get rewards for user, and if some nft's unfreeze period hasn't reached, forefeit rewards for that particular nft
 //! =========================================================================================================
 
 
