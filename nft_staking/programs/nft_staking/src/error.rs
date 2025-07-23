@@ -8,6 +8,9 @@ pub enum StakeErrors {
     #[msg("Minimum Freeze Period hasn't passed yet")]
     FreezePeriod,
 
+    #[msg("No rewards available to claim.")]
+    NoRewards,
+
     #[msg("Integer Overflow")]
     IntegerOverflow,
 
