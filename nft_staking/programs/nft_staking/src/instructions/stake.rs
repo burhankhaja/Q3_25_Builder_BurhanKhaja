@@ -1,14 +1,56 @@
 use crate::{error::StakeErrors, GlobalConfig, StakeAccount, UserAccount};
 use anchor_lang::prelude::*;
-use anchor_spl::token::Mint;
+use anchor_spl::{
+    metadata::{
+        mpl_token_metadata::instructions::{
+            FreezeDelegatedAccount, FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
+        }, //@remove :: FreezeDelegatedAccount
+        MasterEditionAccount, Metadata, MetadataAccount,
+    },
+    token::{approve, Approve, FreezeAccount, Mint, Token, TokenAccount},
+};
 
 #[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    // temp mint , later user metadata crate ??
     pub mint: Account<'info, Mint>,
+    pub collection: Account<'info, Mint>,
+
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = user,
+    )]
+    pub user_ata: Account<'info, TokenAccount>,
+
+    //@account just used for validation, right here in the context struct
+    #[account(
+        seeds = [
+            b"metadata",
+            metadata_program.key().as_ref(),
+            mint.key().as_ref(),
+        ],
+        seeds::program = metadata_program.key(),
+        bump,
+        constraint = metadata.collection.as_ref().unwrap().key.as_ref() == collection.key().as_ref(),
+        constraint = metadata.collection.as_ref().unwrap().verified == true,
+    )]
+    pub metadata : Account<'info, MetadataAccount>,
+
+        #[account(
+        seeds = [
+            b"metadata",
+            metadata_program.key().as_ref(),
+            mint.key().as_ref(),
+            b"edition",
+        ],
+        seeds::program = metadata_program.key(),
+        bump,
+    )]
+    pub edition : Account<'info, MetadataAccount>,
 
     #[account(
         seeds = [b"global_config"], 
@@ -35,6 +77,8 @@ pub struct Stake<'info> {
 
     // Cpi Programs
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub metadata_program: Program<'info, Metadata>,
 }
 
 impl<'info> Stake<'info> {
@@ -68,6 +112,31 @@ impl<'info> Stake<'info> {
     }
 
     pub fn freeze_nft(&mut self) -> Result<()> {
+        let token_program = self.token_program.to_account_info();
+        let delegate = self.stake_account.to_account_info();
+        let token_account = self.user_ata.to_account_info();
+
+        let approve_accounts = Approve {
+            to: token_account, //@note to == tokenAccount from where approve will take place
+            delegate: delegate,
+            authority: self.user.to_account_info(),
+        };
+
+        let approve_ctx = CpiContext::new(token_program, approve_accounts);
+
+        approve(approve_ctx, 1)?;
+
+
+        // let freeze_accounts = FreezeDelegatedAccountCpiAccounts {
+        //     delegate: delegate,
+        //     token_account: token_account,
+        //     edition:
+        //     mint:
+        //     token_program: 
+
+        // };
+
+
         Ok(())
     }
 }
