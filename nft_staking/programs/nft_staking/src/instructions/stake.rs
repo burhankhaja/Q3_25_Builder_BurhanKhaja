@@ -134,7 +134,7 @@ impl<'info> Stake<'info> {
 
         // Freeze nft
         let signer_seeds: &[&[&[u8]]] =
-            &[&[b"stake_account", user_key.as_ref(), mint_key.as_ref()]];
+            &[&[b"stake_account", user_key.as_ref(), mint_key.as_ref(), &[self.stake_account.bump]]];
 
         //@audit_issue :: What kind of access control structure remain after delegating, like :: if original owners retains unfreezing controll even after frozen by delegate, then what is the point of all this ? What if i freeze nft right here without signer seeds, who can unfreeze that ? is it that the one either owner - delegate , whoever freezes gets to unfreeze or what ???? later test this out, for now use signer_seeds  ????
 

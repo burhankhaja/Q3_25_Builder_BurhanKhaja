@@ -131,7 +131,7 @@ impl<'info> Unstake<'info> {
         let mint_key = self.mint.key();
 
         let signer_seeds: &[&[&[u8]]] =
-            &[&[b"stake_account", &user_key.as_ref(), &mint_key.as_ref()]];
+            &[&[b"stake_account", &user_key.as_ref(), &mint_key.as_ref(),  &[self.stake_account.bump]]];
 
         ThawDelegatedAccountCpi::new(
             &metadata_program,
