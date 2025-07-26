@@ -22,13 +22,13 @@ pub struct ClaimRewards<'info> {
 
     #[account(
         seeds = [b"user_account", user.key().as_ref()],
-        bump,
+        bump = user_account.bump,
     )]
     pub user_account: Account<'info, UserAccount>,
 
     #[account(
         seeds = [b"global_config"], 
-        bump,
+        bump = global_config.bump,
     )]
     pub global_config: Account<'info, GlobalConfig>,
 

@@ -3,11 +3,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::{
     metadata::{
         mpl_token_metadata::instructions::{
-            FreezeDelegatedAccount, FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
-        }, //@remove :: FreezeDelegatedAccount
+            FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
+        },
         MasterEditionAccount, Metadata, MetadataAccount,
     },
-    token::{approve, Approve, FreezeAccount, Mint, Token, TokenAccount},
+    token::{approve, Approve, Mint, Token, TokenAccount},
 };
 
 #[derive(Accounts)]
@@ -17,7 +17,6 @@ pub struct Stake<'info> {
 
     pub mint: Account<'info, Mint>,
     pub collection: Account<'info, Mint>,
-
 
     #[account(
         mut,
@@ -38,9 +37,9 @@ pub struct Stake<'info> {
         constraint = metadata.collection.as_ref().unwrap().key.as_ref() == collection.key().as_ref(),
         constraint = metadata.collection.as_ref().unwrap().verified == true,
     )]
-    pub metadata : Account<'info, MetadataAccount>,
+    pub metadata: Account<'info, MetadataAccount>,
 
-        #[account(
+    #[account(
         seeds = [
             b"metadata",
             metadata_program.key().as_ref(),
@@ -50,17 +49,17 @@ pub struct Stake<'info> {
         seeds::program = metadata_program.key(),
         bump,
     )]
-    pub edition : Account<'info, MetadataAccount>,
+    pub edition: Account<'info, MasterEditionAccount>,
 
     #[account(
         seeds = [b"global_config"], 
-        bump,
+        bump = global_config.bump,
     )]
     pub global_config: Account<'info, GlobalConfig>,
 
     #[account(
         seeds = [b"user_account", user.key().as_ref()],
-        bump,
+        bump = user_account.bump,
     )]
     pub user_account: Account<'info, UserAccount>,
 
@@ -112,30 +111,44 @@ impl<'info> Stake<'info> {
     }
 
     pub fn freeze_nft(&mut self) -> Result<()> {
+        let user = self.user.to_account_info();
         let token_program = self.token_program.to_account_info();
         let delegate = self.stake_account.to_account_info();
         let token_account = self.user_ata.to_account_info();
+        let metadata_program = self.metadata_program.to_account_info();
 
+        // approve to stake_account as delegate
         let approve_accounts = Approve {
-            to: token_account, //@note to == tokenAccount from where approve will take place
-            delegate: delegate,
-            authority: self.user.to_account_info(),
+            to: token_account.clone(), //@note to == tokenAccount from where approve will take place
+            delegate: delegate.clone(), //@note :: Otherwise you will get "borrowing after move" error in later usages as the ownership is owned already by this
+            authority: user.clone(),
         };
 
         let approve_ctx = CpiContext::new(token_program, approve_accounts);
 
         approve(approve_ctx, 1)?;
 
+        // let user_key = user.clone().key().as_ref(); //binding to prevent temorary value dropped errors
+        let user_key = user.clone().key(); //binding to prevent temorary value dropped errors @note :: as_ref :: causes same binding errors
+        let mint_key = self.mint.key(); //for preventing same above errors
 
-        // let freeze_accounts = FreezeDelegatedAccountCpiAccounts {
-        //     delegate: delegate,
-        //     token_account: token_account,
-        //     edition:
-        //     mint:
-        //     token_program: 
+        // Freeze nft
+        let signer_seeds: &[&[&[u8]]] =
+            &[&[b"stake_account", user_key.as_ref(), mint_key.as_ref()]];
 
-        // };
+        //@audit_issue :: What kind of access control structure remain after delegating, like :: if original owners retains unfreezing controll even after frozen by delegate, then what is the point of all this ? What if i freeze nft right here without signer seeds, who can unfreeze that ? is it that the one either owner - delegate , whoever freezes gets to unfreeze or what ???? later test this out, for now use signer_seeds  ????
 
+        FreezeDelegatedAccountCpi::new(
+            &metadata_program,
+            FreezeDelegatedAccountCpiAccounts {
+                delegate: &delegate,
+                token_account: &token_account,
+                edition: &self.edition.to_account_info(),
+                mint: &self.mint.to_account_info(),
+                token_program: &self.token_program.to_account_info(),
+            },
+        )
+        .invoke_signed(signer_seeds)?;
 
         Ok(())
     }

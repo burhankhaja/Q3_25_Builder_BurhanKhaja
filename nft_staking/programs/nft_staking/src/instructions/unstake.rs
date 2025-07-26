@@ -1,6 +1,16 @@
 use crate::{error::StakeErrors, GlobalConfig, StakeAccount, UserAccount};
 use anchor_lang::prelude::*;
-use anchor_spl::token::Mint;
+
+use anchor_spl::{
+    metadata::{
+        mpl_token_metadata::instructions::{
+            FreezeDelegatedAccount, FreezeDelegatedAccountCpi, FreezeDelegatedAccountCpiAccounts,
+            ThawDelegatedAccountCpi, ThawDelegatedAccountCpiAccounts,
+        },
+        MasterEditionAccount, Metadata, MetadataAccount, SetAndVerifyCollection,
+    },
+    token::{approve, revoke, Approve, FreezeAccount, Mint, Revoke, Token, TokenAccount},
+};
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
@@ -8,6 +18,37 @@ pub struct Unstake<'info> {
     pub user: Signer<'info>,
 
     pub mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = user,
+    )]
+    pub user_ata: Account<'info, TokenAccount>,
+
+    //@account just used for validation, right here in the context struct
+    #[account(
+        seeds = [
+            b"metadata",
+            metadata_program.key().as_ref(),
+            mint.key().as_ref(),
+        ],
+        seeds::program = metadata_program.key(),
+        bump,
+    )]
+    pub metadata: Account<'info, MetadataAccount>,
+
+    #[account(
+        seeds = [
+            b"metadata",
+            metadata_program.key().as_ref(),
+            mint.key().as_ref(),
+            b"edition",
+        ],
+        seeds::program = metadata_program.key(),
+        bump,
+    )]
+    pub edition: Account<'info, MasterEditionAccount>,
 
     #[account(
         mut,
@@ -31,6 +72,8 @@ pub struct Unstake<'info> {
 
     // Cpi Programs
     pub system_program: Program<'info, System>, //@stupid_try :: close without this program
+    pub token_program: Program<'info, Token>,
+    pub metadata_program: Program<'info, Metadata>,
 }
 
 impl<'info> Unstake<'info> {
@@ -80,6 +123,38 @@ impl<'info> Unstake<'info> {
     }
 
     pub fn unfreeze_nft(&mut self) -> Result<()> {
+        // Unfreeze Nft
+        let metadata_program = self.metadata_program.to_account_info();
+        let token_program = self.token_program.to_account_info();
+
+        let user_key = self.user.clone().key();
+        let mint_key = self.mint.key();
+
+        let signer_seeds: &[&[&[u8]]] =
+            &[&[b"stake_account", &user_key.as_ref(), &mint_key.as_ref()]];
+
+        ThawDelegatedAccountCpi::new(
+            &metadata_program,
+            ThawDelegatedAccountCpiAccounts {
+                delegate: &self.stake_account.to_account_info(),
+                token_account: &self.user_ata.to_account_info(),
+                edition: &self.edition.to_account_info(),
+                mint: &self.mint.to_account_info(),
+                token_program: &token_program,
+            },
+        )
+        .invoke_signed(signer_seeds)?;
+
+        // Revoke Delegation from Stake account
+        //@dev :: Lets try non-idiomatic style
+
+        revoke(CpiContext::new(
+            token_program,
+            Revoke {
+                source: self.user_ata.to_account_info(),
+                authority: self.user.to_account_info(),
+            },
+        ))?;
         Ok(())
     }
 }
