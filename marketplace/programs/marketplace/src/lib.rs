@@ -31,8 +31,8 @@ pub mod marketplace {
     //    admin functions
     //
     //=====================
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
+    pub fn initialize(ctx: Context<Initialize>, treasury: Pubkey, fee: u16) -> Result<()> {
+        ctx.accounts.initialize(treasury, fee, &ctx.bumps)
     }
 
     pub fn freeze_thaw(ctx: Context<FreezeThaw>, freeze: bool) -> Result<()> {
