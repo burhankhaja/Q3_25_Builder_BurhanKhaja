@@ -1,4 +1,4 @@
-use crate::{Global, error::MarketplaceErrors};
+use crate::{error::MarketplaceErrors, Global};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
