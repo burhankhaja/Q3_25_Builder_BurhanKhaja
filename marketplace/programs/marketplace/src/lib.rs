@@ -39,8 +39,8 @@ pub mod marketplace {
         Ok(())
     }
 
-    pub fn update_fee(ctx: Context<UpdateFee>) -> Result<()> {
-        Ok(())
+    pub fn update_fee(ctx: Context<UpdateFee>, new_fee: u16) -> Result<()> {
+        ctx.accounts.update(new_fee)
     }
 
     //=====================
