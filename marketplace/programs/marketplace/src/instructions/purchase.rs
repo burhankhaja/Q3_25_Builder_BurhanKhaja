@@ -141,7 +141,6 @@ impl<'info> Purchase<'info> {
     }
 
     pub fn transfer_nft(&mut self, bumps: &PurchaseBumps) -> Result<()> {
-
         transfer_nft(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
