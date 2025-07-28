@@ -2,7 +2,12 @@ use anchor_lang::{
     prelude::*,
     system_program::{transfer, Transfer},
 };
-use anchor_spl::token::Mint;
+
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    metadata::{Metadata, MetadataAccount},
+    token::{transfer as transfer_nft, Mint, Token, TokenAccount, Transfer as TransferNft},
+};
 
 use crate::{error::MarketplaceErrors, Global, Offer};
 
@@ -16,6 +21,30 @@ pub struct Purchase<'info> {
 
     #[account(mut)]
     pub mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::authority = buyer,
+        associated_token::mint = mint,
+    )]
+    pub buyer_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::authority = seller,
+        associated_token::mint = mint,
+    )]
+    pub seller_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", mint.key().as_ref()],
+        bump,
+        token::authority = vault,
+        token::mint = mint,
+        close = seller,
+    )]
+    pub vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -35,7 +64,10 @@ pub struct Purchase<'info> {
     pub treasury: SystemAccount<'info>, //@audit :: figure out a better way to convert raw Pubkey to type of AccountInfo<'_> // or maybe you can store hashmap type thing which stores address-> T or some raw bytes magic ..... for the later !!!
 
     // cpi programs
-    pub system_program: Program<'info, System>,
+    token_program: Program<'info, Token>,
+    system_program: Program<'info, System>,
+    metadata_program: Program<'info, Metadata>,
+    associated_token_program: Program<'info, AssociatedToken>,
 }
 
 // close listing account
@@ -44,14 +76,14 @@ pub struct Purchase<'info> {
 // we send nft to buyer
 
 impl<'info> Purchase<'info> {
-    pub fn purchase(&mut self) -> Result<()> {
+    pub fn purchase(&mut self, bumps: &PurchaseBumps) -> Result<()> {
         require!(!self.global.frozen, MarketplaceErrors::ProtocolFrozen);
 
         // pay sol price to seller and cut protocol fee
         self.pay_sol()?;
 
         // close listing and transfer nft to the buyer
-        self.transfer_nft()
+        self.transfer_nft(bumps)
     }
 
     pub fn pay_sol(&mut self) -> Result<()> {
@@ -108,7 +140,19 @@ impl<'info> Purchase<'info> {
         Ok(())
     }
 
-    pub fn transfer_nft(&mut self) -> Result<()> {
-        Ok(())
+    pub fn transfer_nft(&mut self, bumps: &PurchaseBumps) -> Result<()> {
+
+        transfer_nft(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TransferNft {
+                    from: self.vault.to_account_info(),
+                    to: self.buyer_ata.to_account_info(),
+                    authority: self.vault.to_account_info(),
+                },
+                &[&[b"vault", self.mint.key().as_ref(), &[bumps.vault]]],
+            ),
+            1,
+        )
     }
 }

@@ -58,7 +58,7 @@ pub mod marketplace {
     }
 
     pub fn purchase_nft(ctx: Context<Purchase>) -> Result<()> {
-        ctx.accounts.purchase()
+        ctx.accounts.purchase(&ctx.bumps)
     }
 
     //
