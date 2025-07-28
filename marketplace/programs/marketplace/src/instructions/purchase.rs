@@ -66,7 +66,7 @@ impl<'info> Purchase<'info> {
         const TWO_WEEKS: i64 = 2 * 7 * 24 * 60 * 60; // 1,209,600 seconds
 
         // if 2 weeks have passed after admin had set new_fee, then start charging the new_fee, otherwise keep the old one
-        let bips = if ((now - self.global.new_fee_at > TWO_WEEKS) && (self.global.new_fee > 0)) {
+        let bips = if ((now - self.global.new_fee_at >= TWO_WEEKS) && (self.global.new_fee > 0)) {
             self.global.fee = self.global.new_fee;
             self.global.new_fee = 0;
             self.global.new_fee_at = 0;
