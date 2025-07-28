@@ -15,8 +15,6 @@ pub struct Delist<'info> {
     #[account(mut)]
     pub mint: Account<'info, Mint>,
 
-    pub collection_mint: Account<'info, Mint>,
-
     #[account(
         mut,
         associated_token::authority = seller,
