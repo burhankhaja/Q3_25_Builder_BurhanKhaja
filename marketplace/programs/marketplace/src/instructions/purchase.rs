@@ -54,10 +54,15 @@ impl<'info> Purchase<'info> {
 
     pub fn pay_sol(&mut self) -> Result<()> {
         let system = self.system_program.to_account_info();
+        let treasury = self.treasury.to_account_info();
         let buyer = self.buyer.to_account_info();
         let seller = self.seller.to_account_info();
         let price = self.listing.price;
-        let fee = price.checked_mul(self.global.fee as u64).unwrap().checked_div(10000).unwrap();  // price * feebips / 10000
+        let fee = price
+            .checked_mul(self.global.fee as u64)
+            .unwrap()
+            .checked_div(10000)
+            .unwrap(); // price * feebips / 10000
         let price_minus_fee = price - fee;
 
         // pay nft price to seller
@@ -74,7 +79,6 @@ impl<'info> Purchase<'info> {
 
         // charge fee on seller's price
         if fee > 0 {
-            let treasury = self.treasury.to_account_info();
             transfer(
                 CpiContext::new(
                     system,

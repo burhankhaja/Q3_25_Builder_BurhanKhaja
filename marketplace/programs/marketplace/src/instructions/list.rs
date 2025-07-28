@@ -25,7 +25,7 @@ pub struct List<'info> {
 }
 
 impl<'info> List<'info> {
-    pub fn list(&mut self,price: u64, bumps: &ListBumps) -> Result<()> {
+    pub fn list(&mut self, price: u64, bumps: &ListBumps) -> Result<()> {
         // create and initialize offer account of user
         self.listing.set_inner(Offer {
             seller: (*self.seller.key),
