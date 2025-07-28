@@ -1,4 +1,4 @@
-use crate::Global;
+use crate::{Global, error::MarketplaceErrors};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -26,6 +26,9 @@ impl<'info> Initialize<'info> {
         fee: u16,
         bumps: &InitializeBumps,
     ) -> Result<()> {
+        // protocol fee can range only between 0 - 0.5%
+        require!(fee <= 50, MarketplaceErrors::MaxFee);
+
         self.global.set_inner(Global {
             admin: (*self.admin.key),
             treasury: (treasury),
