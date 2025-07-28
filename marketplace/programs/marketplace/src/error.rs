@@ -10,4 +10,10 @@ pub enum MarketplaceErrors {
 
     #[msg("Protocol is in same state")]
     SameState,
+
+    #[msg("Protocol is in frozen state")]
+    ProtocolFrozen,
+
+    #[msg("during frozen protocol, Delisting is allowed after 1 week delay")]
+    FrozenDelistDelay,
 }

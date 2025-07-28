@@ -4,7 +4,7 @@ use anchor_lang::{
 };
 use anchor_spl::token::Mint;
 
-use crate::{Global, Offer};
+use crate::{error::MarketplaceErrors, Global, Offer};
 
 #[derive(Accounts)]
 pub struct Purchase<'info> {
@@ -45,6 +45,8 @@ pub struct Purchase<'info> {
 
 impl<'info> Purchase<'info> {
     pub fn purchase(&mut self) -> Result<()> {
+        require!(!self.global.frozen, MarketplaceErrors::ProtocolFrozen);
+
         // pay sol price to seller and cut protocol fee
         self.pay_sol()?;
 

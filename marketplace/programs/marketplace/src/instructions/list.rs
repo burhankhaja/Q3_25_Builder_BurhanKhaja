@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Mint;
 
-use crate::Offer;
+use crate::{error::MarketplaceErrors, Global, Offer};
 
 #[derive(Accounts)]
 pub struct List<'info> {
@@ -20,12 +20,20 @@ pub struct List<'info> {
     )]
     pub listing: Account<'info, Offer>,
 
+    #[account(
+        seeds = [b"global"],
+        bump = global.bump
+    )]
+    pub global: Account<'info, Global>,
+
     // cpi programs
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> List<'info> {
     pub fn list(&mut self, price: u64, bumps: &ListBumps) -> Result<()> {
+        require!(!self.global.frozen, MarketplaceErrors::ProtocolFrozen);
+
         // create and initialize offer account of user
         self.listing.set_inner(Offer {
             seller: (*self.seller.key),
