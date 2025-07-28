@@ -36,7 +36,7 @@ pub mod marketplace {
     }
 
     pub fn freeze_thaw(ctx: Context<FreezeThaw>, freeze: bool) -> Result<()> {
-        Ok(())
+        ctx.accounts.set(freeze)
     }
 
     pub fn update_fee(ctx: Context<UpdateFee>, new_fee: u16) -> Result<()> {

@@ -7,4 +7,7 @@ pub enum MarketplaceErrors {
 
     #[msg("Admin can re-update fee after 7 week delay")]
     FeeUpdateDelay,
+
+    #[msg("Protocol is in same state")]
+    SameState,
 }
