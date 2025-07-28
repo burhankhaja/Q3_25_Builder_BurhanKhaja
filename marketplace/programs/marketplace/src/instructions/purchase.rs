@@ -58,11 +58,23 @@ impl<'info> Purchase<'info> {
         let buyer = self.buyer.to_account_info();
         let seller = self.seller.to_account_info();
         let price = self.listing.price;
-        let fee = price
-            .checked_mul(self.global.fee as u64)
-            .unwrap()
-            .checked_div(10000)
-            .unwrap(); // price * feebips / 10000
+
+        // Fee calculations
+        let now = Clock::get()?.unix_timestamp;
+        const TWO_WEEKS: i64 = 2 * 7 * 24 * 60 * 60; // 1,209,600 seconds
+
+        // if 2 weeks have passed after admin had set new_fee, then start charging the new_fee, otherwise keep the old one
+        let bips = if ((now - self.global.new_fee_at > TWO_WEEKS) && (self.global.new_fee > 0)) {
+            self.global.fee = self.global.new_fee;
+            self.global.new_fee = 0;
+            self.global.new_fee_at = 0;
+
+            self.global.fee as u64
+        } else {
+            self.global.fee as u64
+        };
+
+        let fee = price.checked_mul(bips).unwrap().checked_div(10000).unwrap(); // price * feebips / 10000
         let price_minus_fee = price - fee;
 
         // pay nft price to seller
