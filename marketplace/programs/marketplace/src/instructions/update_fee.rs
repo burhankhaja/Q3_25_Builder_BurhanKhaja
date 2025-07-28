@@ -1,4 +1,4 @@
-use crate::{Global, error::MarketplaceErrors};
+use crate::{error::MarketplaceErrors, Global};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -9,7 +9,8 @@ pub struct UpdateFee<'info> {
     #[account(
         mut,
         seeds = [b"global"],
-        bump = global.bump
+        bump = global.bump,
+        has_one = admin,
     )]
     pub global: Account<'info, Global>,
 }
