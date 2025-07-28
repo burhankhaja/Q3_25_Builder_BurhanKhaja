@@ -54,7 +54,7 @@ pub mod marketplace {
     }
 
     pub fn delist_nft(ctx: Context<Delist>) -> Result<()> {
-        ctx.accounts.delist()
+        ctx.accounts.delist(&ctx.bumps)
     }
 
     pub fn purchase_nft(ctx: Context<Purchase>) -> Result<()> {
