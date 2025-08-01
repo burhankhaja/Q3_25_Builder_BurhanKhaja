@@ -35,4 +35,20 @@ pub mod screen_wars {
             .initialize_user_account(_challenge_id, &ctx.bumps)?;
         ctx.accounts.increment_total_participants()
     }
+
+    // fn : sync_and_lock
+    // fn : withdraw_and_close
+
+    pub fn claim_winner_position(
+        ctx: Context<ClaimWinnerPosition>,
+        _challenge_id: u32,
+    ) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        // validate
+        ctx.accounts.validate_challenge_has_ended(now)?;
+        ctx.accounts.validate_reward_claiming_has_not_started(now)?;
+
+        // set
+        ctx.accounts.set_winner()
+    }
 }
