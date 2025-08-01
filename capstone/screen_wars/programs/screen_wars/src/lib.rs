@@ -45,6 +45,7 @@ pub mod screen_wars {
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         // validate
+        ctx.accounts.validate_user_is_enrolled_in_challenge()?;
         ctx.accounts.validate_challenge_has_ended(now)?;
         ctx.accounts.validate_reward_claiming_has_not_started(now)?;
 

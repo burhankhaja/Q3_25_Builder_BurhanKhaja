@@ -42,6 +42,14 @@ impl<'info> ClaimWinnerPosition<'info> {
         Ok(())
     }
 
+    pub fn validate_user_is_enrolled_in_challenge(&mut self) -> Result<()> {
+        require!(
+            self.user_account.challenge_id == self.challenge.challenge_id,
+            Errors::NotEnrolled
+        );
+        Ok(())
+    }
+
     pub fn set_winner(&mut self) -> Result<()> {
         if self.challenge.winner == Pubkey::default() {
             self.write()
