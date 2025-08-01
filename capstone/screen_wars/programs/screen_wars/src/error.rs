@@ -25,6 +25,9 @@ pub enum Errors {
     #[msg("The 5-day window to claim the winner position has expired")]
     ContentionExpired,
 
+    #[msg("You are not enrolled in the given challenge")]
+    NotEnrolled,
+
     #[msg("Addition caused buffer overflows")]
     IntegerOverflow,
 }
