@@ -16,6 +16,15 @@ pub enum Errors {
     #[msg("Can't join because the challenge has already started")]
     JoinedLate,
 
+    #[msg("Your streak is lower than current temporary winner")]
+    LowerStreak,
+
+    #[msg("Challenge has not ended yet")]
+    ChallengeNotEnded,
+
+    #[msg("The 5-day window to claim the winner position has expired")]
+    ContentionExpired,
+
     #[msg("Addition caused buffer overflows")]
     IntegerOverflow,
 }
