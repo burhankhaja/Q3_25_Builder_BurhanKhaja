@@ -37,7 +37,12 @@ pub mod screen_wars {
     }
 
     // fn : sync_and_lock
-    // fn : withdraw_and_close
+    pub fn withdraw_and_close(ctx: Context<WithdrawClose>, _challenge_id: u32) -> Result<()> {
+        ctx.accounts.validate_challenge_has_ended()?;
+        ctx.accounts.validate_user_is_enrolled_in_challenge()?;
+        ctx.accounts.transfer_sol()
+    }
+
     pub fn claim_winner_position(
         ctx: Context<ClaimWinnerPosition>,
         _challenge_id: u32,
