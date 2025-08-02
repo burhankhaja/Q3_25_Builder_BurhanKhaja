@@ -28,6 +28,15 @@ pub enum Errors {
     #[msg("You are not enrolled in the given challenge")]
     NotEnrolled,
 
-    #[msg("Addition caused buffer overflows")]
+    #[msg("Oops... You ain't winner")]
+    NotWinner,
+
+    #[msg("The protocol is in 5 day winner contention phase, try claiming winnership")]
+    ContentionPhase,
+
+    #[msg("Operation caused buffer overflows")]
     IntegerOverflow,
+
+    #[msg("Operation caused buffer underflows")]
+    IntegerUnderflow,
 }
