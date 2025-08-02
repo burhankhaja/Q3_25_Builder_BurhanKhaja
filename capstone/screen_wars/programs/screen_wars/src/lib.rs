@@ -38,7 +38,6 @@ pub mod screen_wars {
 
     // fn : sync_and_lock
     // fn : withdraw_and_close
-
     pub fn claim_winner_position(
         ctx: Context<ClaimWinnerPosition>,
         _challenge_id: u32,
@@ -53,7 +52,7 @@ pub mod screen_wars {
         ctx.accounts.set_winner()
     }
 
-    pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
+    pub fn claim_rewards(ctx: Context<ClaimRewards>, _challenge_id: u32) -> Result<()> {
         ctx.accounts.validate_caller_is_winner()?;
         ctx.accounts.validate_contention_period_is_over()?;
         ctx.accounts.transfer_sol()
