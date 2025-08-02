@@ -52,4 +52,12 @@ pub mod screen_wars {
         // set
         ctx.accounts.set_winner()
     }
+
+    pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
+        ctx.accounts.validate_caller_is_winner()?;
+        ctx.accounts.validate_contention_period_is_over()?;
+        ctx.accounts.transfer_sol()
+    }
+
+    //@dev :: later add function for admin to take treasury profits ??
 }
