@@ -58,16 +58,20 @@ impl<'info> WithdrawClose<'info> {
     pub fn transfer_sol(&mut self) -> Result<()> {
         let locked_balance = self.user_account.locked_balance;
 
-        transfer(
-            CpiContext::new(
-                self.system_program.to_account_info(),
-                Transfer {
-                    from: self.treasury.to_account_info(),
-                    to: self.user.to_account_info(),
-                },
-            ),
-            locked_balance,
-        )
+        if locked_balance > 0 {
+            transfer(
+                CpiContext::new(
+                    self.system_program.to_account_info(),
+                    Transfer {
+                        from: self.treasury.to_account_info(),
+                        to: self.user.to_account_info(),
+                    },
+                ),
+                locked_balance,
+            )?;
+        }
+
+        Ok(())
 
         //@audit-issue :: how are you gonna transfer from treasury .... use vault system bro ??? fix ... !!!
         //@dev ::  either use pda system with sub_lamports mech or transfer vault ownership to system and then handover authority to global account ???
