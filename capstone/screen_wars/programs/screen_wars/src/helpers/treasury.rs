@@ -1,5 +1,5 @@
 use crate::{
-    helpers::helper_errors::{ArthemeticErrors, TreasuryErrors},
+    helpers::helper_errors::ArthemeticErrors,
     state::Global,
 };
 use anchor_lang::prelude::*;
@@ -15,10 +15,6 @@ pub fn update_treasury_balance(
             .checked_add(amount)
             .ok_or(ArthemeticErrors::IntegerOverflow)?;
     } else {
-        require!(
-            global_account.treasury_balance >= amount,
-            TreasuryErrors::OverClaim
-        );
         global_account
             .treasury_balance
             .checked_sub(amount)

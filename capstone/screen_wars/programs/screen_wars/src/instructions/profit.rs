@@ -26,6 +26,11 @@ pub struct Profit<'info> {
 }
 
 impl<'info> Profit<'info> {
+    pub fn validate_solvency(&mut self, amount: u64) -> Result<()> {
+        require!(self.global.treasury_balance >= amount, Errors::OverClaim);
+        Ok(())
+    }
+
     pub fn withdraw_from_treasury(&mut self, amount: u64) -> Result<()> {
         let global = &self.global.to_account_info();
 

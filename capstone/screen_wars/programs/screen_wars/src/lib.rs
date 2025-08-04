@@ -78,6 +78,7 @@ pub mod screen_wars {
     }
 
     pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
+        ctx.accounts.validate_solvency(amount)?;
         ctx.accounts.withdraw_from_treasury(amount)?;
         ctx.accounts.update_treasury_balance(amount)
     }
