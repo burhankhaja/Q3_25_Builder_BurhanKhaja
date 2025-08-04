@@ -15,6 +15,7 @@ pub struct Profit<'info> {
         mut,
         seeds = [b"global"],
         bump = global.bump,
+        has_one = admin,
     )]
     pub global: Account<'info, Global>,
 
