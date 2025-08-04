@@ -1,6 +1,6 @@
 use crate::{
     error::Errors,
-    helpers::{transfer_from_pda, update_treasury_balance},
+    helpers::{transfer_from_pda, update_treasury_profits},
     state::Global,
 };
 use anchor_lang::prelude::*;
@@ -27,7 +27,7 @@ pub struct Profit<'info> {
 
 impl<'info> Profit<'info> {
     pub fn validate_solvency(&mut self, amount: u64) -> Result<()> {
-        require!(self.global.treasury_balance >= amount, Errors::OverClaim);
+        require!(self.global.treasury_profits >= amount, Errors::OverClaim);
         Ok(())
     }
 
@@ -42,7 +42,7 @@ impl<'info> Profit<'info> {
         transfer_from_pda(global, receiver, amount)
     }
 
-    pub fn update_treasury_balance(&mut self, amount: u64) -> Result<()> {
-        update_treasury_balance(&mut self.global, false, amount)
+    pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
+        update_treasury_profits(&mut self.global, false, amount)
     }
 }

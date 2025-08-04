@@ -67,19 +67,20 @@ pub mod screen_wars {
         ctx.accounts.validate_contention_period_is_over()?;
         ctx.accounts.transfer_sol()?;
 
-        let treasury_profits = ctx
+        let treasury_profit_from_challenge = ctx
             .accounts
             .challenge
             .total_slashed
             .checked_div(2)
             .ok_or(Errors::IntegerUnderflow)?;
 
-        ctx.accounts.update_treasury_balance(treasury_profits)
+        ctx.accounts
+            .update_treasury_profits(treasury_profit_from_challenge)
     }
 
     pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
         ctx.accounts.validate_solvency(amount)?;
         ctx.accounts.withdraw_from_treasury(amount)?;
-        ctx.accounts.update_treasury_balance(amount)
+        ctx.accounts.update_treasury_profits(amount)
     }
 }

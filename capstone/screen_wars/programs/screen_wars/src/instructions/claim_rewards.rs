@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     error::Errors,
-    helpers::{transfer_from_pda, update_treasury_balance},
+    helpers::{transfer_from_pda, update_treasury_profits},
     state::{Challenge, Global},
 };
 
@@ -64,7 +64,7 @@ impl<'info> ClaimRewards<'info> {
         transfer_from_pda(global, user, rewards)
     }
 
-    pub fn update_treasury_balance(&mut self, amount: u64) -> Result<()> {
-        update_treasury_balance(&mut self.global, true, amount)
+    pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
+        update_treasury_profits(&mut self.global, true, amount)
     }
 }
