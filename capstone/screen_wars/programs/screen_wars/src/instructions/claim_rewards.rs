@@ -43,8 +43,7 @@ impl<'info> ClaimRewards<'info> {
             .challenge
             .end
             .checked_add(five_days)
-            .ok_or(Errors::IntegerOverflow)
-            .unwrap();
+            .ok_or(Errors::IntegerOverflow)?;
 
         require!(now > contention_period, Errors::ContentionPhase);
 
@@ -56,8 +55,7 @@ impl<'info> ClaimRewards<'info> {
             .challenge
             .total_slashed
             .checked_div(2)
-            .ok_or(Errors::IntegerUnderflow)
-            .unwrap();
+            .ok_or(Errors::IntegerUnderflow)?;
 
         let global = &self.global.to_account_info();
         let user = &self.user.to_account_info();

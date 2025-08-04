@@ -48,8 +48,7 @@ impl<'info> CreateChallenge<'info> {
 
         let end_time = start_time
             .checked_add(three_weeks)
-            .ok_or(Errors::IntegerOverflow)
-            .unwrap();
+            .ok_or(Errors::IntegerOverflow)?;
 
         self.challenge.set_inner(Challenge {
             challenge_id: self.global.challenge_ids,
