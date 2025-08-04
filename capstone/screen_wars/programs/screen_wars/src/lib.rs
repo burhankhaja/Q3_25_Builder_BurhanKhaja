@@ -9,14 +9,16 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
+pub mod helpers;
+
 declare_id!("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 
 #[program]
 pub mod screen_wars {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, treasury: Pubkey) -> Result<()> {
-        ctx.accounts.initialize_global_account(treasury, &ctx.bumps)
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        ctx.accounts.initialize_global_account(&ctx.bumps)
     }
 
     pub fn create_challenge(

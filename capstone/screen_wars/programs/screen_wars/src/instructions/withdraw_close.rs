@@ -1,11 +1,9 @@
+use anchor_lang::prelude::*;
+
 use crate::{
     error::Errors,
+    helpers::transfer_from_pda,
     state::{Challenge, Global, User},
-};
-
-use anchor_lang::{
-    prelude::*,
-    system_program::{transfer, Transfer},
 };
 
 #[derive(Accounts)]
@@ -34,9 +32,6 @@ pub struct WithdrawClose<'info> {
     )]
     pub user_account: Account<'info, User>,
 
-    #[account(mut)]
-    pub treasury: SystemAccount<'info>, //@audit-issue :: fix later ::
-
     pub system_program: Program<'info, System>,
 }
 
@@ -44,6 +39,7 @@ impl<'info> WithdrawClose<'info> {
     pub fn validate_challenge_has_ended(&mut self) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         require!(now > self.challenge.end, Errors::ChallengeNotEnded);
+
         Ok(())
     }
 
@@ -52,6 +48,7 @@ impl<'info> WithdrawClose<'info> {
             self.user_account.challenge_id == self.challenge.challenge_id,
             Errors::NotEnrolled
         );
+
         Ok(())
     }
 
@@ -59,21 +56,12 @@ impl<'info> WithdrawClose<'info> {
         let locked_balance = self.user_account.locked_balance;
 
         if locked_balance > 0 {
-            transfer(
-                CpiContext::new(
-                    self.system_program.to_account_info(),
-                    Transfer {
-                        from: self.treasury.to_account_info(),
-                        to: self.user.to_account_info(),
-                    },
-                ),
-                locked_balance,
-            )?;
+            let global = &self.global.to_account_info();
+            let user = &self.user.to_account_info();
+
+            transfer_from_pda(global, user, locked_balance)?;
         }
 
         Ok(())
-
-        //@audit-issue :: how are you gonna transfer from treasury .... use vault system bro ??? fix ... !!!
-        //@dev ::  either use pda system with sub_lamports mech or transfer vault ownership to system and then handover authority to global account ???
     }
 }

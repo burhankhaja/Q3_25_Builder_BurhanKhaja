@@ -20,14 +20,10 @@ pub struct Initialize<'info> {
 }
 
 impl<'info> Initialize<'info> {
-    pub fn initialize_global_account(
-        &mut self,
-        treasury: Pubkey,
-        bumps: &InitializeBumps,
-    ) -> Result<()> {
+    pub fn initialize_global_account(&mut self, bumps: &InitializeBumps) -> Result<()> {
         self.global.set_inner(Global {
             admin: *self.admin.key,
-            treasury,
+            treasury: self.global.key(),
             challenge_ids: 1, // @note: just used to get unique challenge_id for challenge creation
             bump: bumps.global,
         });

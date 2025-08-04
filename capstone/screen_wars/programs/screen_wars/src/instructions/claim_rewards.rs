@@ -1,10 +1,9 @@
+use anchor_lang::prelude::*;
+
 use crate::{
     error::Errors,
+    helpers::transfer_from_pda,
     state::{Challenge, Global},
-};
-use anchor_lang::{
-    prelude::*,
-    system_program::{transfer, Transfer},
 };
 
 #[derive(Accounts)]
@@ -27,15 +26,13 @@ pub struct ClaimRewards<'info> {
     )]
     pub global: Account<'info, Global>,
 
-    #[account(mut)]
-    pub treasury: SystemAccount<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> ClaimRewards<'info> {
     pub fn validate_caller_is_winner(&mut self) -> Result<()> {
         require!(self.user.key() == self.challenge.winner, Errors::NotWinner);
+
         Ok(())
     }
 
@@ -62,18 +59,9 @@ impl<'info> ClaimRewards<'info> {
             .ok_or(Errors::IntegerUnderflow)
             .unwrap();
 
-        transfer(
-            CpiContext::new(
-                self.system_program.to_account_info(),
-                Transfer {
-                    from: self.treasury.to_account_info(),
-                    to: self.user.to_account_info(),
-                },
-            ),
-            rewards,
-        )
+        let global = &self.global.to_account_info();
+        let user = &self.user.to_account_info();
 
-        //@audit-issue :: how are you gonna transfer from treasury .... use vault system bro ??? fix ... !!!
-        //@dev ::  either use pda system with sub_lamports mech or transfer vault ownership to system and then handover authority to global account ???
+        transfer_from_pda(global, user, rewards)
     }
 }
