@@ -15,6 +15,7 @@ declare_id!("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 
 #[program]
 pub mod screen_wars {
+
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
@@ -65,5 +66,7 @@ pub mod screen_wars {
         ctx.accounts.transfer_sol()
     }
 
-    //@dev :: later add function for admin to take treasury profits ??
+    pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
+        ctx.accounts.withdraw_from_treasury(amount)
+    }
 }

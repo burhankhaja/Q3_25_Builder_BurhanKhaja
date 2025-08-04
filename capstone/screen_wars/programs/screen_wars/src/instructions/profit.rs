@@ -1,0 +1,33 @@
+use crate::{helpers::transfer_from_pda, state::Global};
+use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+#[instruction(_challenge_id: u32)]
+pub struct Profit<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(
+        seeds = [b"global"],
+        bump = global.bump,
+    )]
+    pub global: Account<'info, Global>,
+
+    #[account(mut)]
+    pub to_optional: Option<AccountInfo<'info>>,
+
+    pub system_program: Program<'info, System>,
+}
+
+impl<'info> Profit<'info> {
+    pub fn withdraw_from_treasury(&mut self, amount: u64) -> Result<()> {
+        let global = &self.global.to_account_info();
+
+        let receiver: &AccountInfo<'info> = match &self.to_optional {
+            Some(given_address) => given_address,
+            None => &self.admin.to_account_info(),
+        };
+
+        transfer_from_pda(global, receiver, amount)
+    }
+}
