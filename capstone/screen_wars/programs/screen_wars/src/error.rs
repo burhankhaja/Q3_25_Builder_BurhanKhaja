@@ -34,6 +34,9 @@ pub enum Errors {
     #[msg("The protocol is in 5 day winner contention phase, try claiming winnership")]
     ContentionPhase,
 
+    #[msg("Admin cant withdraw more than treasury profits")]
+    OverClaim,
+
     #[msg("Operation caused buffer overflows")]
     IntegerOverflow,
 

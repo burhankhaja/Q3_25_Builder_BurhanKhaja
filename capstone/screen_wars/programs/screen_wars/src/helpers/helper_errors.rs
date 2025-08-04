@@ -7,12 +7,6 @@ pub enum TransferErrors {
 }
 
 #[error_code]
-pub enum TreasuryErrors {
-    #[msg("cant withdraw more than treasury profits")]
-    OverClaim,
-}
-
-#[error_code]
 pub enum ArthemeticErrors {
     #[msg("Operation caused buffer overflows")]
     IntegerOverflow,
