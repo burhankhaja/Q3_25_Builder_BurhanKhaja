@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     error::Errors,
-    helpers::transfer_from_pda,
+    helpers::{transfer_from_pda, update_treasury_balance},
     state::{Challenge, Global},
 };
 
@@ -21,6 +21,7 @@ pub struct ClaimRewards<'info> {
     pub challenge: Account<'info, Challenge>,
 
     #[account(
+        mut,
         seeds = [b"global"],
         bump = global.bump,
     )]
@@ -61,5 +62,9 @@ impl<'info> ClaimRewards<'info> {
         let user = &self.user.to_account_info();
 
         transfer_from_pda(global, user, rewards)
+    }
+
+    pub fn update_treasury_balance(&mut self, amount: u64) -> Result<()> {
+        update_treasury_balance(&mut self.global, true, amount)
     }
 }

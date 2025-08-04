@@ -1,4 +1,8 @@
-use crate::{helpers::transfer_from_pda, state::Global};
+use crate::{
+    error::Errors,
+    helpers::{transfer_from_pda, update_treasury_balance},
+    state::Global,
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -8,6 +12,7 @@ pub struct Profit<'info> {
     pub admin: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [b"global"],
         bump = global.bump,
     )]
@@ -29,5 +34,9 @@ impl<'info> Profit<'info> {
         };
 
         transfer_from_pda(global, receiver, amount)
+    }
+
+    pub fn update_treasury_balance(&mut self, amount: u64) -> Result<()> {
+        update_treasury_balance(&mut self.global, false, amount)
     }
 }

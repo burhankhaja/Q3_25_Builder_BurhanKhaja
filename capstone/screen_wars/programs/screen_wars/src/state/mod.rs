@@ -5,6 +5,7 @@ use anchor_lang::prelude::*;
 pub struct Global {
     pub admin: Pubkey,
     pub treasury: Pubkey,
+    pub treasury_balance: u64,
     pub challenge_ids: u32, // since counter, maybe use explicit naming
     pub bump: u8,
 }

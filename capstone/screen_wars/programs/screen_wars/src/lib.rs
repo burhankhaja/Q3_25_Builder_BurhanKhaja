@@ -11,6 +11,8 @@ pub use state::*;
 
 pub mod helpers;
 
+use crate::error::Errors;
+
 declare_id!("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 
 #[program]
@@ -63,10 +65,20 @@ pub mod screen_wars {
     pub fn claim_rewards(ctx: Context<ClaimRewards>, _challenge_id: u32) -> Result<()> {
         ctx.accounts.validate_caller_is_winner()?;
         ctx.accounts.validate_contention_period_is_over()?;
-        ctx.accounts.transfer_sol()
+        ctx.accounts.transfer_sol()?;
+
+        let treasury_profits = ctx
+            .accounts
+            .challenge
+            .total_slashed
+            .checked_div(2)
+            .ok_or(Errors::IntegerUnderflow)?;
+
+        ctx.accounts.update_treasury_balance(treasury_profits)
     }
 
     pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
-        ctx.accounts.withdraw_from_treasury(amount)
+        ctx.accounts.withdraw_from_treasury(amount)?;
+        ctx.accounts.update_treasury_balance(amount)
     }
 }

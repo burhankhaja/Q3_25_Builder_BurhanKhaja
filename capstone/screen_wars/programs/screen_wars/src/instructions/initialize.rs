@@ -24,6 +24,7 @@ impl<'info> Initialize<'info> {
         self.global.set_inner(Global {
             admin: *self.admin.key,
             treasury: self.global.key(),
+            treasury_balance: 0,
             challenge_ids: 1, // @note: just used to get unique challenge_id for challenge creation
             bump: bumps.global,
         });
