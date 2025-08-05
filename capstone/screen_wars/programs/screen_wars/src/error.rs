@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum Errors {
+    #[msg("Admin has disabled the creation of any more challenges")]
+    ChallengeCreationPaused,
+
+    #[msg("Challenge creation state is already set to desired value")]
+    ChallengeStateAlreadySet,
+
     #[msg(
         "There must be atleast 24 delay before the challenge starts, choose different start_time"
     )]
