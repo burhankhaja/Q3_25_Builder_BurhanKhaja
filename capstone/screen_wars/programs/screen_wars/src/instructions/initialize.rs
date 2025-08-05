@@ -26,6 +26,7 @@ impl<'info> Initialize<'info> {
             treasury: self.global.key(),
             treasury_profits: 0,
             challenge_ids: 1, // @note: just used to get unique challenge_id for challenge creation
+            challenge_creation_paused: false,
             bump: bumps.global,
         });
 

@@ -29,6 +29,7 @@ pub mod screen_wars {
         start_time: i64,
         daily_timer: i64,
     ) -> Result<()> {
+        ctx.accounts.validate_challenge_creation_is_unpaused()?;
         ctx.accounts
             .create_new_challenge(start_time, daily_timer, &ctx.bumps)?;
         ctx.accounts.increment_global_challenge_ids()
@@ -82,5 +83,12 @@ pub mod screen_wars {
         ctx.accounts.validate_solvency(amount)?;
         ctx.accounts.withdraw_from_treasury(amount)?;
         ctx.accounts.update_treasury_profits(amount)
+    }
+
+    pub fn set_challenge_creation_paused(
+        ctx: Context<ToggleChallengeCreation>,
+        pause: bool,
+    ) -> Result<()> {
+        ctx.accounts.update_challenge_creation_state(pause)
     }
 }

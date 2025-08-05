@@ -7,6 +7,7 @@ pub struct Global {
     pub treasury: Pubkey,
     pub treasury_profits: u64,
     pub challenge_ids: u32, // since counter, maybe use explicit naming
+    pub challenge_creation_paused: bool,
     pub bump: u8,
 }
 

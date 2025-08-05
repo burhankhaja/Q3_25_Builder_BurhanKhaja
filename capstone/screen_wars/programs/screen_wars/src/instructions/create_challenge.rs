@@ -30,6 +30,14 @@ pub struct CreateChallenge<'info> {
 }
 
 impl<'info> CreateChallenge<'info> {
+    pub fn validate_challenge_creation_is_unpaused(&mut self) -> Result<()> {
+        require!(
+            !self.global.challenge_creation_paused,
+            Errors::ChallengeCreationPaused
+        );
+        Ok(())
+    }
+
     pub fn create_new_challenge(
         &mut self,
         start_time: i64,
