@@ -49,6 +49,9 @@ pub enum Errors {
     #[msg("Operation caused buffer underflows")]
     IntegerUnderflow,
 
+    #[msg("Operation either resulted in overflow or underflow")]
+    IntegerBoundsExceeded,
+
     #[msg("Amounts can't be zero")]
     ZeroAmounts,
 }
