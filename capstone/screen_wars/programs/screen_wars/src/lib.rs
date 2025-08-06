@@ -52,7 +52,7 @@ pub mod screen_wars {
         let mut days_not_synced_or_failed = days_not_synced;
 
         if !user_passed_today {
-            days_not_synced_or_failed += 1;
+            days_not_synced_or_failed += 1; // no need for checked_add
         }
 
         if days_not_synced_or_failed > 0 {
@@ -71,8 +71,13 @@ pub mod screen_wars {
                 .update_users_locked_balance(-(lb_penalty as i64))?;
 
             // total penalty is applied by slashing all the  daily_lamports + 25% of previous locked_balance
-            let total_penalty =
-                lb_penalty + (SyncLock::DAILY_LAMPORTS * days_not_synced_or_failed as u64); //@audit :: use checked_add_mul
+            // (SyncLock::DAILY_LAMPORTS * days_not_synced_or_failed) + lb_penalty
+            let total_penalty = SyncLock::DAILY_LAMPORTS
+                .checked_mul(days_not_synced_or_failed as u64)
+                .ok_or(Errors::IntegerOverflow)?
+                .checked_add(lb_penalty)
+                .ok_or(Errors::IntegerOverflow)?;
+
             msg!("Total penalty: {:?}", total_penalty);
         }
 

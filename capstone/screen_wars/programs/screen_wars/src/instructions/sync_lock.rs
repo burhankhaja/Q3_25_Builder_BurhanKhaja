@@ -5,7 +5,6 @@ use anchor_lang::{
 
 use crate::{
     error::Errors,
-    helpers::transfer_from_pda,
     state::{Challenge, Global, User},
 };
 
@@ -48,7 +47,10 @@ impl<'info> SyncLock<'info> {
     }
 
     pub fn deposit_total_daily_lamports(&mut self, days_to_update: u8) -> Result<()> {
-        let lamports = days_to_update as u64 * SyncLock::DAILY_LAMPORTS;
+        // days_to_update * SyncLock::DAILY_LAMPORTS
+        let lamports = (days_to_update as u64)
+            .checked_mul(SyncLock::DAILY_LAMPORTS)
+            .ok_or(Errors::IntegerOverflow)?;
 
         transfer(
             CpiContext::new(
@@ -92,15 +94,37 @@ impl<'info> SyncLock<'info> {
             const RATE_75_PERCENT: u128 = 750_000;
 
             // Apply compounding: (RATE^days) / (SCALE^days)
-            let numerator = RATE_75_PERCENT.pow(days_not_synced_or_failed as u32); //@audit use checked_pow
-            let denominator = SCALE.pow(days_not_synced_or_failed as u32); //@audit ; use checked_pow
 
-            let multiplier = numerator * SCALE / denominator; // bring back to 1x SCALE //@audit:: use checked_muldiv
+            // RATE_75_PERCENT ^ days_not_synced_or_failed
+            let numerator = RATE_75_PERCENT
+                .checked_pow(days_not_synced_or_failed as u32)
+                .ok_or(Errors::IntegerOverflow)?;
+
+            // SCALE ^ days_not_synced_or_failed
+            let denominator = SCALE
+                .checked_pow(days_not_synced_or_failed as u32)
+                .ok_or(Errors::IntegerOverflow)?;
+
+            // numerator * SCALE / denominator
+            let multiplier = numerator
+                .checked_mul(SCALE)
+                .ok_or(Errors::IntegerOverflow)?
+                .checked_div(denominator)
+                .ok_or(Errors::IntegerUnderflow)?; // bring back to 1x SCALE
 
             let balance_u128 = current_balance as u128;
-            let final_balance = (balance_u128 * multiplier) / SCALE;
-            /// @audit__use cheked mul_div
-            let penalty = balance_u128 - final_balance;
+
+            // balance_u128 * multiplier / SCALE
+            let final_balance = balance_u128
+                .checked_mul(multiplier)
+                .ok_or(Errors::IntegerOverflow)?
+                .checked_div(SCALE)
+                .ok_or(Errors::IntegerUnderflow)?;
+
+            // balance_u128 - final_balance
+            let penalty = balance_u128
+                .checked_sub(final_balance)
+                .ok_or(Errors::IntegerUnderflow)?;
 
             Ok(penalty as u64) // => safe downcast, since unscaled amounts
         }
@@ -112,7 +136,7 @@ impl<'info> SyncLock<'info> {
     }
 
     pub fn increment_streak(&mut self) -> Result<()> {
-        self.user_account.streak += 1;
+        self.user_account.streak += 1; // no need for checked_add , impossible to overflow !
         Ok(())
     }
 }
