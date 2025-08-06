@@ -64,20 +64,11 @@ impl<'info> SyncLock<'info> {
         )
     }
 
+    /// Adjusts the user's locked balance by `amount`, which can be positive (credit) or negative (slash).
     pub fn update_users_locked_balance(&mut self, amount: i64) -> Result<()> {
-        require!(amount != 0, Errors::ZeroAmounts);
-
-        if amount > 0 {
-            self.user_account
-                .locked_balance
-                .checked_add(amount as u64)
-                .ok_or(Errors::IntegerOverflow)?;
-        } else {
-            self.user_account
-                .locked_balance
-                .checked_sub(amount as u64)
-                .ok_or(Errors::IntegerUnderflow)?;
-        }
+        (self.user_account.locked_balance as i64)
+            .checked_add(amount)
+            .ok_or(Errors::IntegerBoundsExceeded)?;
 
         Ok(())
     }
