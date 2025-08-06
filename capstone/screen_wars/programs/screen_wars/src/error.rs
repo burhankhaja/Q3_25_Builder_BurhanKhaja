@@ -48,4 +48,7 @@ pub enum Errors {
 
     #[msg("Operation caused buffer underflows")]
     IntegerUnderflow,
+
+    #[msg("Amounts can't be zero")]
+    ZeroAmounts,
 }
