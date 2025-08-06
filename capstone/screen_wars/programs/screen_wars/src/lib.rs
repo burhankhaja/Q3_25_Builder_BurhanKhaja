@@ -42,7 +42,49 @@ pub mod screen_wars {
         ctx.accounts.increment_total_participants()
     }
 
-    // fn : sync_and_lock
+    pub fn sync_and_lock(ctx: Context<SyncLock>) -> Result<()> {
+        let (user_passed_today, days_not_synced) = ctx.accounts.mock_offchain_oracle_component()?;
+        let today = 1;
+
+        ctx.accounts
+            .deposit_total_daily_lamports(days_not_synced + today)?;
+
+        let mut days_not_synced_or_failed = days_not_synced;
+
+        if !user_passed_today {
+            days_not_synced_or_failed += 1;
+        }
+
+        if days_not_synced_or_failed > 0 {
+            ctx.accounts.reset_streak()?;
+
+            let current_balance = ctx.accounts.user_account.locked_balance;
+            let lb_penalty = ctx
+                .accounts
+                .calculate_exponential_penalty_on_locked_balance(
+                    current_balance,
+                    days_not_synced_or_failed,
+                )?;
+
+            // slash
+            ctx.accounts
+                .update_users_locked_balance(-(lb_penalty as i64))?;
+
+            // total penalty is applied by slashing all the  daily_lamports + 25% of previous locked_balance
+            let total_penalty =
+                lb_penalty + (SyncLock::DAILY_LAMPORTS * days_not_synced_or_failed as u64); //@audit :: use checked_add_mul
+            msg!("Total penalty: {:?}", total_penalty);
+        }
+
+        if user_passed_today {
+            ctx.accounts.increment_streak()?;
+            ctx.accounts
+                .update_users_locked_balance(SyncLock::DAILY_LAMPORTS as i64)?; // increase
+        }
+
+        Ok(())
+    }
+
     pub fn withdraw_and_close(ctx: Context<WithdrawClose>, _challenge_id: u32) -> Result<()> {
         ctx.accounts.validate_challenge_has_ended()?;
         ctx.accounts.validate_user_is_enrolled_in_challenge()?;
