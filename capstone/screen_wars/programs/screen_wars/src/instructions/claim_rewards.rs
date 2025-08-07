@@ -66,11 +66,6 @@ impl<'info> ClaimRewards<'info> {
         helpers::transfer_from_pda(global, user, reward)
     }
 
-    //@dev :: use i64 + -  design pattern with addition onlys to handle both addition and negation operation with minimal lines of code
-    pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
-        helpers::update_treasury_profits(&mut self.global, true, amount)
-    }
-
     // set claimed function
     pub fn set_winner_claimed(&mut self) -> Result<()> {
         self.challenge.winner_has_claimed = true;

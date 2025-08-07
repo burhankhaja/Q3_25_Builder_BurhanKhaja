@@ -124,7 +124,7 @@ pub mod screen_wars {
         if claimed_by_creator {
             ctx.accounts.close_challenge_account()?;
         } else {
-            ctx.accounts.update_treasury_profits(treasury_profits)?;
+            helpers::update_treasury_profits(&mut ctx.accounts.global, treasury_profits as i64)?;
         }
 
         // winner state is nullified with default pubkey after claiming to prevent fund draining
@@ -144,7 +144,7 @@ pub mod screen_wars {
         if claimed_by_winner {
             ctx.accounts.close_challenge_account()?;
         } else {
-            ctx.accounts.update_treasury_profits(treasury_profits)?;
+            helpers::update_treasury_profits(&mut ctx.accounts.global, treasury_profits as i64)?;
         }
 
         // creator state is nullified with default pubkey after claiming to prevent fund draining
@@ -155,7 +155,7 @@ pub mod screen_wars {
     pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
         ctx.accounts.validate_solvency(amount)?;
         ctx.accounts.withdraw_from_treasury(amount)?;
-        ctx.accounts.update_treasury_profits(amount)
+        helpers::update_treasury_profits(&mut ctx.accounts.global, -(amount as i64))
     }
 
     pub fn set_challenge_creation_paused(

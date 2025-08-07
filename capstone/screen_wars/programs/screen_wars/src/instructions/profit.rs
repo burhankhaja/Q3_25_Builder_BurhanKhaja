@@ -37,8 +37,4 @@ impl<'info> Profit<'info> {
 
         helpers::transfer_from_pda(global, receiver, amount)
     }
-
-    pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
-        helpers::update_treasury_profits(&mut self.global, false, amount)
-    }
 }
