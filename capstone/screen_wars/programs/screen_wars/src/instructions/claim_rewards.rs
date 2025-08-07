@@ -129,10 +129,13 @@ impl<'info> ClaimRewards<'info> {
         ))
     }
 
-    // close function
+    /// @dev In reward claim logic, we don't check for `CLOSED_ACCOUNT_DISCRIMINATOR` because we already
+    ///      invalidate eligible accounts by setting their Pubkey to `Pubkey::default()`.
+    ///      This acts as a soft deletion and prevents re-use.
     pub fn close_challenge_account(&mut self) -> Result<()> {
-        //// Don't forget to close securely
-        //// read :: https://solana.com/developers/courses/program-security/closing-accounts
-        Ok(())
+        let challenge_pda = &self.challenge.to_account_info();
+        let rent_receiver = &self.user.to_account_info();
+
+        helpers::close_pda(challenge_pda, rent_receiver)
     }
 }

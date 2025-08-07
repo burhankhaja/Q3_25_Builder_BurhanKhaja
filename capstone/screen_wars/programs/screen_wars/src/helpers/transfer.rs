@@ -1,5 +1,7 @@
 use crate::helpers::helper_errors::{ArthemeticErrors, TransferErrors};
 use anchor_lang::prelude::*;
+use std::io::Write;
+use std::ops::DerefMut;
 
 pub fn transfer_from_pda(pda: &AccountInfo, to: &AccountInfo, amount: u64) -> Result<()> {
     let pda_initial_lamports = pda.lamports();
@@ -32,6 +34,40 @@ fn is_pda_rent_exempt_after_transfer(
         post_transfer_balance >= rent,
         TransferErrors::PDAInsufficientRent
     );
+
+    Ok(())
+}
+
+//// For Closing PDA securely
+pub const CLOSED_ACCOUNT_DISCRIMINATOR: [u8; 8] = [255; 8];
+
+/// @dev Prevents re-initialization attacks by zeroing out account data and writing a special "closed" discriminator.
+///      This follows best practices for secure account closing in Solana:
+///      https://solana.com/developers/courses/program-security/closing-accounts#secure-account-closing
+///
+/// @notice Be aware of the "limbo account" issue, where a closed account may linger in memory without being fully reaped.
+///         This is a minor concern for most programs, but you can learn more here:
+///         https://[...]#manual-force-defund
+pub fn close_pda(pda: &AccountInfo, to: &AccountInfo) -> Result<()> {
+    let pda_initial_lamports = pda.lamports();
+    let to_initial_lamports = to.lamports();
+
+    **pda.lamports.borrow_mut() = 0;
+
+    **to.lamports.borrow_mut() = to_initial_lamports
+        .checked_add(pda_initial_lamports)
+        .ok_or(ArthemeticErrors::IntegerOverflow)?;
+
+    // zero out data
+    let mut data = pda.try_borrow_mut_data()?;
+    for byte in data.deref_mut().iter_mut() {
+        *byte = 0;
+    }
+
+    let dst: &mut [u8] = &mut data;
+    let mut cursor = std::io::Cursor::new(dst);
+    cursor.write_all(&CLOSED_ACCOUNT_DISCRIMINATOR).unwrap();
+    ////
 
     Ok(())
 }
