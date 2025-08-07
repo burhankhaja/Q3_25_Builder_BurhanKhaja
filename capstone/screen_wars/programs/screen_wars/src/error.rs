@@ -37,6 +37,9 @@ pub enum Errors {
     #[msg("Oops... You ain't winner")]
     NotWinner,
 
+    #[msg("Oops... You ain't challenge creator")]
+    NotCreator,
+
     #[msg("The protocol is in 5 day winner contention phase, try claiming winnership")]
     ContentionPhase,
 
