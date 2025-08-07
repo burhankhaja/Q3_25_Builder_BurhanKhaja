@@ -22,6 +22,7 @@ pub mod screen_wars {
     /// ====================================
     /// ========= Admin Functions ==========
     /// ====================================
+
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         ctx.accounts.initialize_global_account(&ctx.bumps)
     }
