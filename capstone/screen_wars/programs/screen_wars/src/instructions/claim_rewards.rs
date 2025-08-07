@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     error::Errors,
-    helpers::{transfer_from_pda, update_treasury_profits},
+    helpers,
     state::{Challenge, Global},
 };
 
@@ -16,7 +16,6 @@ pub struct ClaimRewards<'info> {
         mut,
         seeds = [b"challenge", _challenge_id.to_be_bytes().as_ref() ], 
         bump = challenge.bump,
-        close = user,
     )]
     pub challenge: Account<'info, Challenge>,
 
@@ -37,6 +36,15 @@ impl<'info> ClaimRewards<'info> {
         Ok(())
     }
 
+    pub fn validate_caller_is_creator(&mut self) -> Result<()> {
+        require!(
+            self.user.key() == self.challenge.creator,
+            Errors::NotCreator
+        );
+
+        Ok(())
+    }
+
     pub fn validate_contention_period_is_over(&mut self) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let five_days = 5 * 24 * 60 * 60; //@dev :: must ::  later store all helper variables in separate file, and import from that across whole protocol files
@@ -51,20 +59,80 @@ impl<'info> ClaimRewards<'info> {
         Ok(())
     }
 
-    pub fn transfer_sol(&mut self) -> Result<()> {
-        let rewards = self
-            .challenge
-            .total_slashed
-            .checked_div(2)
-            .ok_or(Errors::IntegerUnderflow)?;
-
+    pub fn transfer_sol(&mut self, reward: u64) -> Result<()> {
         let global = &self.global.to_account_info();
         let user = &self.user.to_account_info();
 
-        transfer_from_pda(global, user, rewards)
+        helpers::transfer_from_pda(global, user, reward)
     }
 
+    //@dev :: use i64 + -  design pattern with addition onlys to handle both addition and negation operation with minimal lines of code
     pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
-        update_treasury_profits(&mut self.global, true, amount)
+        helpers::update_treasury_profits(&mut self.global, true, amount)
+    }
+
+    // set claimed function
+    pub fn set_winner_claimed(&mut self) -> Result<()> {
+        self.challenge.winner_has_claimed = true;
+        self.challenge.winner = Pubkey::default();
+
+        Ok(())
+    }
+
+    pub fn set_creator_claimed(&mut self) -> Result<()> {
+        self.challenge.creator_has_claimed = true;
+        self.challenge.creator = Pubkey::default();
+        Ok(())
+    }
+
+    /// @notice Splits the total slashed amount into rewards: 50% to the winner, 10% to the challenge creator, and the remaining 40% to the protocol.
+    /// @dev Uses fixed-point scaling (SCALE = 1_000_000) to simulate decimal division using integers.
+    /*
+    @dev :: Scaling explanation
+
+    In normal math, to calculate 33% of 98:
+        98 * (33 / 100) = 32.34
+
+    But in integer math, (33 / 100) becomes 0, so the result is wrong.
+
+    To fix this, we scale 33 by a factor (e.g. 100):
+        98 * ((33 * 100) / 100)
+
+    But now the result is still too large due to the extra scale,
+    so we divide once more to bring it back down:
+        (98 * ((33 * 100) / 100)) / 100
+
+    In our case, we use SCALE = 1_000_000 for higher precision.
+    So, we apply the same logic with large scaled values.
+
+    So that means using 1e6 scaling,
+    33% of 98 will become:
+        (98 * ((33 * 1_000_000) / 1_000_000)) / 1_000_000
+    */
+    pub fn calculate_rewards(&mut self) -> Result<(u64, u64, u64)> {
+        const SCALE: u128 = 1_000_000;
+        const SCALED_50_PERCENT: u128 = 500_000;
+        const SCALED_10_PERCENT: u128 = 100_000;
+
+        let total_slashed = self.challenge.total_slashed as u128;
+
+        ////
+        let winner_rewards = (total_slashed * ((SCALED_50_PERCENT * SCALE) / SCALE)) / SCALE;
+        let creator_reward = (total_slashed * ((SCALED_10_PERCENT * SCALE) / SCALE)) / SCALE;
+        let non_protocol_rewards = winner_rewards + creator_reward;
+        let protocol_profits = total_slashed - non_protocol_rewards; //@dev :: use checked_ops in all of the above math operations
+
+        Ok((
+            winner_rewards as u64,
+            creator_reward as u64,
+            protocol_profits as u64,
+        ))
+    }
+
+    // close function
+    pub fn close_challenge_account(&mut self) -> Result<()> {
+        //// Don't forget to close securely
+        //// read :: https://solana.com/developers/courses/program-security/closing-accounts
+        Ok(())
     }
 }

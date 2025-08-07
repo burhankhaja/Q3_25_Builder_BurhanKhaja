@@ -1,8 +1,4 @@
-use crate::{
-    error::Errors,
-    helpers,
-    state::Global,
-};
+use crate::{error::Errors, helpers, state::Global};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]

@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct CreateChallenge<'info> {
     #[account(mut)]
-    pub signer: Signer<'info>,
+    pub creator: Signer<'info>,
 
     #[account(
         mut,
@@ -19,7 +19,7 @@ pub struct CreateChallenge<'info> {
 
     #[account(
         init,
-        payer = signer,
+        payer = creator,
         space = Challenge::DISCRIMINATOR.len() + Challenge::INIT_SPACE,
         seeds = [b"challenge", global.challenge_ids.to_be_bytes().as_ref() ], 
         bump,
@@ -59,6 +59,7 @@ impl<'info> CreateChallenge<'info> {
             .ok_or(Errors::IntegerOverflow)?;
 
         self.challenge.set_inner(Challenge {
+            creator: *self.creator.key,
             challenge_id: self.global.challenge_ids,
             daily_timer,
             start: start_time,
@@ -66,6 +67,8 @@ impl<'info> CreateChallenge<'info> {
             total_slashed: 0,
             winner: Pubkey::default(),
             winner_streak: 0,
+            winner_has_claimed: false,
+            creator_has_claimed: false,
             total_participants: 0,
             bump: bumps.challenge,
         });

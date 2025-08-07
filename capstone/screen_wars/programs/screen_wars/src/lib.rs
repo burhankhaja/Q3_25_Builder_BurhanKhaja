@@ -112,20 +112,44 @@ pub mod screen_wars {
         ctx.accounts.set_winner()
     }
 
-    pub fn claim_rewards(ctx: Context<ClaimRewards>, _challenge_id: u32) -> Result<()> {
+    pub fn claim_rewards_as_winner(ctx: Context<ClaimRewards>, _challenge_id: u32) -> Result<()> {
         ctx.accounts.validate_caller_is_winner()?;
         ctx.accounts.validate_contention_period_is_over()?;
-        ctx.accounts.transfer_sol()?;
 
-        let treasury_profit_from_challenge = ctx
-            .accounts
-            .challenge
-            .total_slashed
-            .checked_div(2)
-            .ok_or(Errors::IntegerUnderflow)?;
+        //// calculate rewards
+        let (winner_rewards, _, treasury_profits) = ctx.accounts.calculate_rewards()?;
 
-        ctx.accounts
-            .update_treasury_profits(treasury_profit_from_challenge)
+        //// close challenge account if claimed by creator, otherwise update treasury profits
+        let claimed_by_creator = ctx.accounts.challenge.creator_has_claimed;
+        if claimed_by_creator {
+            ctx.accounts.close_challenge_account()?;
+        } else {
+            ctx.accounts.update_treasury_profits(treasury_profits)?;
+        }
+
+        // winner state is nullified with default pubkey after claiming to prevent fund draining
+        ctx.accounts.set_winner_claimed()?;
+        ctx.accounts.transfer_sol(winner_rewards)
+    }
+
+    pub fn claim_rewards_as_creator(ctx: Context<ClaimRewards>, _challenge_id: u32) -> Result<()> {
+        ctx.accounts.validate_caller_is_creator()?;
+        ctx.accounts.validate_contention_period_is_over()?;
+
+        //// calculate rewards
+        let (_, creator_rewards, treasury_profits) = ctx.accounts.calculate_rewards()?;
+
+        //// close challenge account if claimed by winner, otherwise update treasury profits
+        let claimed_by_winner = ctx.accounts.challenge.winner_has_claimed;
+        if claimed_by_winner {
+            ctx.accounts.close_challenge_account()?;
+        } else {
+            ctx.accounts.update_treasury_profits(treasury_profits)?;
+        }
+
+        // creator state is nullified with default pubkey after claiming to prevent fund draining
+        ctx.accounts.set_creator_claimed()?;
+        ctx.accounts.transfer_sol(creator_rewards)
     }
 
     pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
