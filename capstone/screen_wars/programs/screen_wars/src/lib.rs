@@ -78,7 +78,9 @@ pub mod screen_wars {
                 .checked_add(lb_penalty)
                 .ok_or(Errors::IntegerOverflow)?;
 
-            msg!("Total penalty: {:?}", total_penalty);
+            // slashed amounts are future rewards
+            ctx.accounts
+                .update_total_slashed_in_challenge(total_penalty)?;
         }
 
         if user_passed_today {

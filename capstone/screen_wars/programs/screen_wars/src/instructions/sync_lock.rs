@@ -21,6 +21,7 @@ pub struct SyncLock<'info> {
     pub global: Account<'info, Global>,
 
     #[account(
+        mut,
         seeds = [b"challenge", _challenge_id.to_be_bytes().as_ref() ], 
         bump = challenge.bump,
     )]
@@ -128,6 +129,14 @@ impl<'info> SyncLock<'info> {
 
     pub fn increment_streak(&mut self) -> Result<()> {
         self.user_account.streak += 1; // no need for checked_add , impossible to overflow !
+        Ok(())
+    }
+
+    pub fn update_total_slashed_in_challenge(&mut self, amount: u64) -> Result<()> {
+        self.challenge
+            .total_slashed
+            .checked_add(amount)
+            .ok_or(Errors::IntegerOverflow)?;
         Ok(())
     }
 }
