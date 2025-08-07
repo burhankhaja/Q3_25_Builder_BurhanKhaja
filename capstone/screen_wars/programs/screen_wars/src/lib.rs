@@ -18,9 +18,30 @@ declare_id!("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 #[program]
 pub mod screen_wars {
     use super::*;
+
+    /// ====================================
+    /// ========= Admin Functions ==========
+    /// ====================================
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         ctx.accounts.initialize_global_account(&ctx.bumps)
     }
+
+    pub fn set_challenge_creation_paused(
+        ctx: Context<ToggleChallengeCreation>,
+        pause: bool,
+    ) -> Result<()> {
+        ctx.accounts.update_challenge_creation_state(pause)
+    }
+
+    pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
+        ctx.accounts.validate_solvency(amount)?;
+        ctx.accounts.withdraw_from_treasury(amount)?;
+        helpers::update_treasury_profits(&mut ctx.accounts.global, -(amount as i64))
+    }
+
+    /// ====================================
+    /// ========= User Functions ===========
+    /// ====================================
 
     pub fn create_challenge(
         ctx: Context<CreateChallenge>,
@@ -149,18 +170,5 @@ pub mod screen_wars {
         // creator state is nullified with default pubkey after claiming to prevent fund draining
         ctx.accounts.set_creator_claimed()?;
         ctx.accounts.transfer_sol(creator_rewards)
-    }
-
-    pub fn take_protocol_profits(ctx: Context<Profit>, amount: u64) -> Result<()> {
-        ctx.accounts.validate_solvency(amount)?;
-        ctx.accounts.withdraw_from_treasury(amount)?;
-        helpers::update_treasury_profits(&mut ctx.accounts.global, -(amount as i64))
-    }
-
-    pub fn set_challenge_creation_paused(
-        ctx: Context<ToggleChallengeCreation>,
-        pause: bool,
-    ) -> Result<()> {
-        ctx.accounts.update_challenge_creation_state(pause)
     }
 }
