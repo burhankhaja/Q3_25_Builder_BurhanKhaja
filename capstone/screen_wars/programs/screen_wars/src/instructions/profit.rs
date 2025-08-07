@@ -1,6 +1,6 @@
 use crate::{
     error::Errors,
-    helpers::{transfer_from_pda, update_treasury_profits},
+    helpers,
     state::Global,
 };
 use anchor_lang::prelude::*;
@@ -39,10 +39,10 @@ impl<'info> Profit<'info> {
             None => &self.admin.to_account_info(),
         };
 
-        transfer_from_pda(global, receiver, amount)
+        helpers::transfer_from_pda(global, receiver, amount)
     }
 
     pub fn update_treasury_profits(&mut self, amount: u64) -> Result<()> {
-        update_treasury_profits(&mut self.global, false, amount)
+        helpers::update_treasury_profits(&mut self.global, false, amount)
     }
 }
