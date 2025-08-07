@@ -111,11 +111,35 @@ impl<'info> ClaimRewards<'info> {
 
         let total_slashed = self.challenge.total_slashed as u128;
 
-        ////
-        let winner_rewards = (total_slashed * ((SCALED_50_PERCENT * SCALE) / SCALE)) / SCALE;
-        let creator_reward = (total_slashed * ((SCALED_10_PERCENT * SCALE) / SCALE)) / SCALE;
-        let non_protocol_rewards = winner_rewards + creator_reward;
-        let protocol_profits = total_slashed - non_protocol_rewards; //@dev :: use checked_ops in all of the above math operations
+        // (total_slashed * ((SCALED_50_PERCENT * SCALE) / SCALE)) / SCALE;
+        let winner_rewards = SCALED_50_PERCENT
+            .checked_mul(SCALE)
+            .ok_or(Errors::IntegerOverflow)?
+            .checked_div(SCALE)
+            .ok_or(Errors::IntegerUnderflow)?
+            .checked_mul(total_slashed)
+            .ok_or(Errors::IntegerOverflow)?
+            .checked_div(SCALE)
+            .ok_or(Errors::IntegerUnderflow)?;
+
+        // (total_slashed * ((SCALED_10_PERCENT * SCALE) / SCALE)) / SCALE;
+        let creator_reward = SCALED_10_PERCENT
+            .checked_mul(SCALE)
+            .ok_or(Errors::IntegerOverflow)?
+            .checked_div(SCALE)
+            .ok_or(Errors::IntegerUnderflow)?
+            .checked_mul(total_slashed)
+            .ok_or(Errors::IntegerOverflow)?
+            .checked_div(SCALE)
+            .ok_or(Errors::IntegerUnderflow)?;
+
+        let non_protocol_rewards = winner_rewards
+            .checked_add(creator_reward)
+            .ok_or(Errors::IntegerOverflow)?;
+
+        let protocol_profits = total_slashed
+            .checked_sub(non_protocol_rewards)
+            .ok_or(Errors::IntegerUnderflow)?;
 
         Ok((
             winner_rewards as u64,
