@@ -41,12 +41,6 @@ impl<'info> SyncLock<'info> {
     // On YTD average, 10 million lamports are arount $1 - $2
     pub const DAILY_LAMPORTS: u64 = 10_000_000;
 
-    pub fn mock_offchain_oracle_component(&mut self) -> Result<(bool, u8)> {
-        let user_passed: bool = true;
-        let days_not_synced: u8 = 0;
-        Ok((user_passed, days_not_synced))
-    }
-
     pub fn deposit_total_daily_lamports(&mut self, days_to_update: u8) -> Result<()> {
         // days_to_update * SyncLock::DAILY_LAMPORTS
         let lamports = (days_to_update as u64)

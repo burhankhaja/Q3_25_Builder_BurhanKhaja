@@ -11,15 +11,13 @@ pub use state::*;
 
 pub mod helpers;
 
-use crate::error::Errors;
+use crate::{error::Errors, helpers::DebugData};
 
 declare_id!("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 
 #[program]
 pub mod screen_wars {
-
     use super::*;
-
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         ctx.accounts.initialize_global_account(&ctx.bumps)
     }
@@ -42,8 +40,9 @@ pub mod screen_wars {
         ctx.accounts.increment_total_participants()
     }
 
-    pub fn sync_and_lock(ctx: Context<SyncLock>) -> Result<()> {
-        let (user_passed_today, days_not_synced) = ctx.accounts.mock_offchain_oracle_component()?;
+    pub fn sync_and_lock(ctx: Context<SyncLock>, debug: Option<DebugData>) -> Result<()> {
+        let (user_passed_today, days_not_synced) = helpers::mock_offchain_oracle_component(debug)?;
+
         let today = 1;
 
         ctx.accounts
