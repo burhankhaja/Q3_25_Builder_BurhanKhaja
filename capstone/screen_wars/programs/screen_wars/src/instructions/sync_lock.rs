@@ -61,9 +61,15 @@ impl<'info> SyncLock<'info> {
 
     /// Adjusts the user's locked balance by `amount`, which can be positive (credit) or negative (slash).
     pub fn update_users_locked_balance(&mut self, amount: i64) -> Result<()> {
-        (self.user_account.locked_balance as i64)
+        let new_balance = (self.user_account.locked_balance as i64)
             .checked_add(amount)
             .ok_or(Errors::IntegerBoundsExceeded)?;
+
+        self.user_account.locked_balance = if new_balance >= 0 {
+            new_balance as u64
+        } else {
+            -(new_balance) as u64
+        };
 
         Ok(())
     }
@@ -127,10 +133,12 @@ impl<'info> SyncLock<'info> {
     }
 
     pub fn update_total_slashed_in_challenge(&mut self, amount: u64) -> Result<()> {
-        self.challenge
+        self.challenge.total_slashed = self
+            .challenge
             .total_slashed
             .checked_add(amount)
             .ok_or(Errors::IntegerOverflow)?;
+
         Ok(())
     }
 }

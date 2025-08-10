@@ -64,10 +64,12 @@ impl<'info> JoinChallenge<'info> {
     }
 
     pub fn increment_total_participants(&mut self) -> Result<()> {
-        self.challenge
+        self.challenge.total_participants = self
+            .challenge
             .total_participants
             .checked_add(1)
-            .ok_or(Errors::IntegerOverflow)?; //@audit :: check if pda is updated ??
+            .ok_or(Errors::IntegerOverflow)?;
+
         Ok(())
     }
 }

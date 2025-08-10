@@ -77,10 +77,12 @@ impl<'info> CreateChallenge<'info> {
     }
 
     pub fn increment_global_challenge_ids(&mut self) -> Result<()> {
-        self.global
+        self.global.challenge_ids = self
+            .global
             .challenge_ids
             .checked_add(1)
-            .ok_or(Errors::IntegerOverflow)?; //@audit :: check whether you need to explicity assign value to the pda , test it out whether ids got updated ??
+            .ok_or(Errors::IntegerOverflow)?;
+
         Ok(())
     }
 }
