@@ -21,7 +21,7 @@ pub struct CreateChallenge<'info> {
         init,
         payer = creator,
         space = Challenge::DISCRIMINATOR.len() + Challenge::INIT_SPACE,
-        seeds = [b"challenge", global.challenge_ids.to_be_bytes().as_ref() ], 
+        seeds = [b"challenge", global.challenge_ids.to_le_bytes().as_ref()], 
         bump,
     )]
     pub challenge: Account<'info, Challenge>,

@@ -22,7 +22,7 @@ pub struct SyncLock<'info> {
 
     #[account(
         mut,
-        seeds = [b"challenge", _challenge_id.to_be_bytes().as_ref() ], 
+        seeds = [b"challenge", _challenge_id.to_le_bytes().as_ref() ], 
         bump = challenge.bump,
     )]
     pub challenge: Account<'info, Challenge>,
