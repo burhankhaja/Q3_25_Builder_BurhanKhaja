@@ -12,7 +12,7 @@ screen_wars = "4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "http://127.0.0.1:8899"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
