@@ -50,7 +50,7 @@ impl<'info> CreateChallenge<'info> {
         let one_week = one_day * 7;
         let three_weeks = one_week * 3;
 
-        require!(start_time > now + one_day, Errors::ChallengeStartsTooSoon);
+        require!(start_time >= now + one_day, Errors::ChallengeStartsTooSoon);
         require!(start_time < now + one_week, Errors::ChallengeStartsTooFar);
         require!(daily_timer < two_hours, Errors::ChallengeExceedsTwoHours);
 
