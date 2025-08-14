@@ -22,6 +22,9 @@ pub enum Errors {
     #[msg("Can't join because the challenge has already started")]
     JoinedLate,
 
+    #[msg("Already synced for today")]
+    AlreadySynced,
+
     #[msg("Your streak is lower than current temporary winner")]
     LowerStreak,
 
