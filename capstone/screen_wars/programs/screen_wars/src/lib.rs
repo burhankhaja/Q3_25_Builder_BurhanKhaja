@@ -63,7 +63,8 @@ pub mod screen_wars {
     }
 
     pub fn sync_and_lock(ctx: Context<SyncLock>, debug: Option<DebugData>) -> Result<()> {
-        let (user_passed_today, days_not_synced) = helpers::mock_offchain_oracle_component(debug)?;
+        let (user_passed_today, days_not_synced, synced_today) = helpers::mock_offchain_oracle_component(debug)?;
+        ctx.accounts.validated_today_not_synced_already(synced_today)?;
 
         let today = 1;
 
