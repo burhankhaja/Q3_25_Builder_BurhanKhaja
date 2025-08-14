@@ -62,7 +62,11 @@ pub mod screen_wars {
         ctx.accounts.increment_total_participants()
     }
 
-    pub fn sync_and_lock(ctx: Context<SyncLock>, debug: Option<DebugData>) -> Result<()> {
+    pub fn sync_and_lock(
+        ctx: Context<SyncLock>,
+        _challenge_id: u32,
+        debug: Option<DebugData>,
+    ) -> Result<()> {
         ctx.accounts.validate_challenge_has_started()?;
 
         let (user_passed_today, days_not_synced, synced_today) =
