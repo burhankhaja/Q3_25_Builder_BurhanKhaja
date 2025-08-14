@@ -19,6 +19,9 @@ pub enum Errors {
     #[msg("Daily Challenges must be under 2 hours")]
     ChallengeExceedsTwoHours,
 
+    #[msg("The challenge hasn't started yet")]
+    ChallengeNotStarted,
+
     #[msg("Can't join because the challenge has already started")]
     JoinedLate,
 
