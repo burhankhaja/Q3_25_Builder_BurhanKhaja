@@ -68,6 +68,7 @@ pub mod screen_wars {
         debug: Option<DebugData>,
     ) -> Result<()> {
         ctx.accounts.validate_challenge_has_started()?;
+        ctx.accounts.validate_challenge_has_not_ended()?;
 
         let (user_passed_today, days_not_synced, synced_today) =
             helpers::mock_offchain_oracle_component(debug)?;

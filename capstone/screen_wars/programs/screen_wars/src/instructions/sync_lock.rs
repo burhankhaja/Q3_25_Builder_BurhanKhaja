@@ -52,6 +52,12 @@ impl<'info> SyncLock<'info> {
         Ok(())
     }
 
+    pub fn validate_challenge_has_not_ended(&mut self) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        require!(now < self.challenge.end, Errors::ChallengeEnded);
+        Ok(())
+    }
+
     pub fn deposit_total_daily_lamports(&mut self, days_to_update: u8) -> Result<()> {
         // days_to_update * SyncLock::DAILY_LAMPORTS
         let lamports = (days_to_update as u64)
