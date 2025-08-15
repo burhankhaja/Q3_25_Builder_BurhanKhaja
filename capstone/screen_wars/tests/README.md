@@ -15,3 +15,17 @@ let startTime = new BN(_startTime).toArrayLike(Buffer, "le", 8);
 // assume rust
 fn start(ctx: Context<Assume>, startTime: i64) -> Result<()> {}
 ```
+
+#### Arthematic operation between BigInt type and normal js types lead unexpected results
+
+- here `challengeStartTime` is of type BigInt read from Pda , challengePDAData.start
+
+```ts
+      // log : 17553180701641600
+      let nineteenthDay = challengeStartTime + (constants.TWENTY_ONE_DAY_IN_SECONDS - (constants.ONE_DAY_IN_SECONDS * 2)); 
+
+    // log : 1756959529
+    let nineteenthDay = Number(challengeStartTime) + (constants.TWENTY_ONE_DAY_IN_SECONDS - (constants.ONE_DAY_IN_SECONDS * 2)); 
+
+
+```
