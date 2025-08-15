@@ -36,9 +36,16 @@ pub struct WithdrawClose<'info> {
 }
 
 impl<'info> WithdrawClose<'info> {
-    pub fn validate_challenge_has_ended(&mut self) -> Result<()> {
+    pub fn validate_contention_period_is_over(&mut self) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
-        require!(now > self.challenge.end, Errors::ChallengeNotEnded);
+        let five_days = 5 * 24 * 60 * 60; //@dev :: must ::  later store all helper variables in separate file, and import from that across whole protocol files
+        let contention_period = self
+            .challenge
+            .end
+            .checked_add(five_days)
+            .ok_or(Errors::IntegerOverflow)?;
+
+        require!(now > contention_period, Errors::ContentionPhase);
 
         Ok(())
     }

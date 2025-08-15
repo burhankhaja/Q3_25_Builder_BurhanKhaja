@@ -125,7 +125,7 @@ pub mod screen_wars {
     }
 
     pub fn withdraw_and_close(ctx: Context<WithdrawClose>, _challenge_id: u32) -> Result<()> {
-        ctx.accounts.validate_challenge_has_ended()?;
+        ctx.accounts.validate_contention_period_is_over()?;
         ctx.accounts.validate_user_is_enrolled_in_challenge()?;
         ctx.accounts.transfer_sol()
     }
