@@ -18,7 +18,6 @@ pub struct ClaimWinnerPosition<'info> {
     pub challenge: Account<'info, Challenge>,
 
     #[account(
-        mut,
         seeds = [b"user", user.key().as_ref() ], 
         bump,
     )]
