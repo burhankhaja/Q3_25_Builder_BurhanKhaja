@@ -11,12 +11,7 @@ import {
 import { Buffer } from 'node:buffer';
 import { BN } from "bn.js";
 
-//////
-// import { LiteSVM, Clock, TransactionMetadata, FailedTransactionMetadata } from "litesvm";
-// import * as borsh from "@coral-xyz/borsh";
-// import { BN } from "bn.js";
-// import { assert, timeStamp } from "node:console";
-//////
+import * as state from "./state.helpers";
 
 
 export async function initialize(svm: LiteSVM, programId: PublicKey, admin: Keypair, globalPDA: PublicKey) {
@@ -160,5 +155,143 @@ export async function joinChallenge(svm: LiteSVM, programId: PublicKey, _challen
 
     return result;
 
+
+}
+
+
+export async function syncAndLock(
+    svm: LiteSVM,
+    programId: PublicKey,
+    _challengeId: number,
+    user: Keypair,
+    options: {
+        logTxResult?: boolean,
+        debug?: {
+            user_passed: boolean,
+            days_not_synced: number,
+            synced_today: boolean
+        },
+    } = {}
+) {
+    const { logTxResult = false, debug } = options;
+
+    const discriminator = Buffer.from([126, 228, 221, 117, 135, 234, 35, 250]);
+
+    let challengeId = new BN(_challengeId).toArrayLike(Buffer, "le", 4);
+
+
+    // serializing Option<DebugData>
+    let debugDataBuffer; //@audit-issue : weird error : when set None and if and only if sync is called two times => causes Error 6 ? while calling once with none works fine
+    // @audit-ok : temp fix : always use some data
+    if (debug) {
+        debugDataBuffer = Buffer.concat([
+            Buffer.from([1]), // Some flag (1)
+            Buffer.from([debug.user_passed ? 1 : 0]),
+            Buffer.from([debug.days_not_synced]),
+            Buffer.from([debug.synced_today ? 1 : 0])
+        ]);
+    } else {
+        debugDataBuffer = Buffer.from([0]); // None (0)
+    }
+
+    const data = Buffer.concat([
+        discriminator,
+        challengeId,
+        debugDataBuffer
+    ]);
+
+    // accounts
+    const [globalPDA] = await state.getGlobalPDAAddressAndBump(programId);
+    const [challengePDA] = await state.getChallengePDAAddressAndBump(_challengeId, programId);
+    const [userPDA] = await state.getUserPDAAddressAndBump(user.publicKey, programId);
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: user.publicKey, isSigner: true, isWritable: true },
+            { pubkey: globalPDA, isSigner: false, isWritable: true },
+            { pubkey: challengePDA, isSigner: false, isWritable: true },
+            { pubkey: userPDA, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = svm.latestBlockhash();
+    tx.sign(user);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+
+    return result;
+}
+
+export async function claimWinnerPosition(
+    svm: LiteSVM,
+    programId: PublicKey,
+    _challengeId: number,
+    user: Keypair,
+    options: {
+        logTxResult?: boolean,
+    } = {}
+) {
+    const { logTxResult = false } = options;
+    let discriminator = Buffer.from([115, 143, 40, 222, 237, 184, 243, 235]);
+
+    // params
+    let challengeId = new BN(_challengeId).toArrayLike(Buffer, "le", 4);
+
+    // accounts
+    const [challengePDA] = await state.getChallengePDAAddressAndBump(_challengeId, programId);
+    const [userPDA] = await state.getUserPDAAddressAndBump(user.publicKey, programId);
+
+    // data
+    const data = Buffer.concat([
+        discriminator,
+        challengeId,
+    ]);
+
+    // accounts
+    // user : signer
+    // challengePDA
+    // userPDA
+    // systemAccount
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: user.publicKey, isSigner: true, isWritable: true },
+            { pubkey: challengePDA, isSigner: false, isWritable: true },
+            { pubkey: userPDA, isSigner: false, isWritable: false },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = svm.latestBlockhash();
+    tx.sign(user);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+
+    return result;
 
 }
