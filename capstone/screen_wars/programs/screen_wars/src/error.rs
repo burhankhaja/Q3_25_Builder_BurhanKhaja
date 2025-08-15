@@ -22,6 +22,9 @@ pub enum Errors {
     #[msg("The challenge hasn't started yet")]
     ChallengeNotStarted,
 
+    #[msg("The challenge has ended")]
+    ChallengeEnded,
+
     #[msg("Can't join because the challenge has already started")]
     JoinedLate,
 
