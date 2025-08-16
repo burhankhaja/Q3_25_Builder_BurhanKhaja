@@ -2,7 +2,6 @@ import { LiteSVM } from "litesvm";
 
 import {
     Keypair,
-    LAMPORTS_PER_SOL,
     PublicKey,
     Transaction,
     TransactionInstruction,
@@ -294,4 +293,190 @@ export async function claimWinnerPosition(
 
     return result;
 
+}
+
+//@audit ::::::::::: start testing from here............
+export async function withdrawAndClose(
+    svm: LiteSVM,
+    programId: PublicKey,
+    _challengeId: number,
+    user: Keypair,
+    options: {
+        logTxResult?: boolean,
+    } = {}
+) {
+    const { logTxResult = false } = options;
+    let discriminator = Buffer.from([226, 34, 214, 71, 139, 182, 0, 238]);
+
+    // params
+    let challengeId = new BN(_challengeId).toArrayLike(Buffer, "le", 4);
+
+    // accounts
+    const [globalPDA] = await state.getGlobalPDAAddressAndBump(programId);
+    const [challengePDA] = await state.getChallengePDAAddressAndBump(_challengeId, programId);
+    const [userPDA] = await state.getUserPDAAddressAndBump(user.publicKey, programId);
+
+    // data
+    const data = Buffer.concat([
+        discriminator,
+        challengeId,
+    ]);
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: user.publicKey, isSigner: true, isWritable: true },
+            { pubkey: globalPDA, isSigner: false, isWritable: true }, //@dev : writable cause lamports sent
+            { pubkey: challengePDA, isSigner: false, isWritable: true },
+            { pubkey: userPDA, isSigner: false, isWritable: true }, //@dev :: writable because closed
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = svm.latestBlockhash();
+    tx.sign(user);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+
+    return result;
+
+}
+
+export async function claimRewardsAsWinner(
+    svm: LiteSVM,
+    programId: PublicKey,
+    _challengeId: number,
+    winner: Keypair,
+    options: {
+        logTxResult?: boolean,
+    } = {}
+) {
+
+    const { logTxResult = false } = options;
+    let discriminator = Buffer.from([158, 96, 78, 224, 80, 254, 44, 164]);
+
+    // params
+    let challengeId = new BN(_challengeId).toArrayLike(Buffer, "le", 4);
+
+    // accounts
+    const [globalPDA] = await state.getGlobalPDAAddressAndBump(programId);
+    const [challengePDA] = await state.getChallengePDAAddressAndBump(_challengeId, programId);
+
+    // data
+    const data = Buffer.concat([
+        discriminator,
+        challengeId,
+    ]);
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: winner.publicKey, isSigner: true, isWritable: true },
+            { pubkey: challengePDA, isSigner: false, isWritable: true },
+            { pubkey: globalPDA, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = svm.latestBlockhash();
+    tx.sign(winner);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+
+    return result;
+}
+
+export async function claimRewardsAsCreator(
+    svm: LiteSVM,
+    programId: PublicKey,
+    _challengeId: number,
+    creator: Keypair,
+    options: {
+        logTxResult?: boolean,
+    } = {}
+) {
+
+    const { logTxResult = false } = options;
+    let discriminator = Buffer.from([42, 100, 134, 87, 170, 75, 36, 122]);
+
+    // params
+    let challengeId = new BN(_challengeId).toArrayLike(Buffer, "le", 4);
+
+    // accounts
+    const [globalPDA] = await state.getGlobalPDAAddressAndBump(programId);
+    const [challengePDA] = await state.getChallengePDAAddressAndBump(_challengeId, programId);
+
+    // data
+    const data = Buffer.concat([
+        discriminator,
+        challengeId,
+    ]);
+
+    const ix = new TransactionInstruction({
+        keys: [
+            { pubkey: creator.publicKey, isSigner: true, isWritable: true },
+            { pubkey: challengePDA, isSigner: false, isWritable: true },
+            { pubkey: globalPDA, isSigner: false, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = svm.latestBlockhash();
+    tx.sign(creator);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+
+    return result;
+}
+
+export async function takeProtocolProfits(
+    svm: LiteSVM,
+    programId: PublicKey,
+    amount: number,
+    admin: Keypair,
+    globalPDA: PublicKey,
+) { 
+
+    //// params
+    // amounts : u64
+
+    //// accounts
+    // admin
+    // global
+    // to_optional : Option<AccountInfo<'info>> //// @audit :: how do i serialize this "maybe try buffer(0) in that place"
+    // system_program
 }
