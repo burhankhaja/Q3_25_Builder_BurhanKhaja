@@ -106,6 +106,14 @@ export async function teleportToRewardClaimingPhase_________bergDeclaredWinner(s
     await clock.setTimeStamp(svm, afterContentionPeriod);
 }
 
+export async function teleport___BergClaimedWinnerRewards(svm: LiteSVM, programId: PublicKey, admin: Keypair, jeff: Keypair, shrinath: Keypair, berg: Keypair, challengeId: number) {
+
+    await teleportToRewardClaimingPhase_________bergDeclaredWinner(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+    await methods.claimRewardsAsWinner(svm, programId, challengeId, berg, { logTxResult: false });
+
+}
+
 // creates another challenge (id: 2), (creator : berg) , (pariticipant : apaar; locked : 10_000_000) 
 export async function secondChallengeCreatedByBerg____JoinedAndLockedByApaar(svm: LiteSVM, programId: PublicKey, berg: Keypair, apaar: Keypair, challengeId: number) {
 
