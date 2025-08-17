@@ -4,7 +4,8 @@ import {
     LAMPORTS_PER_SOL,
     PublicKey,
 } from "@solana/web3.js";
-import { assert } from "node:console";
+import { assert, Console } from "node:console";
+import * as assertion from "assert";
 
 
 // helper imports
@@ -786,12 +787,86 @@ describe("screen_wars", () => {
         assert(challengePDARentAfter == 0, "challenge account must be fully drained to be recognized as closed by the runtime");
     });
 
+    it("should correctly distribute protocol profits to admin and optional wallet, maintain treasury solvency, and update treasury profits in the global PDA accordingly", async () => {
+
+        let challengeId = 1;
+
+        await userflows.teleport___BergClaimedWinnerRewards(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        let totalWithdrawn = 0;
+        let initialWithdraw = 90_000;
+        let initialTotalTreasuryProfits = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+        let adminSolBalanceBeforeInitialTake = Number(svm.getBalance(admin.publicKey));
+        let treasurySolBalanceBeforeBothTakes = Number(svm.getBalance(globalPDA)); // note globalPDA == treasury
+
+        //// initial profit taking of 1k lamports
+        await methods.takeProtocolProfits(svm, programId, initialWithdraw, admin, { logTxResult: false });
+
+        // update totalWithdrawn && fetch updated treasury_profits
+        totalWithdrawn += initialWithdraw;
+        let tresuryProfitsAfterInitialProfitTaking = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+
+        // admin sol balance after initial withdraw, note since optional receiving wallet wasn't given , profits are directly sent to admin
+        let adminSolBalanceAfterInitialTake = Number(svm.getBalance(admin.publicKey));
 
 
+        // use optionalWallet as receiver for second take profit call
+        let optionalWallet = Keypair.generate().publicKey;
+        let optionalWalletSolBalanceBeforeSecondTake = Number(svm.getBalance(optionalWallet));
+
+        //// second profit taking of all leftover treasury_profits + this time admin wants to receive profits on different wallet
+        await methods.takeProtocolProfits(svm, programId, tresuryProfitsAfterInitialProfitTaking, admin, { logTxResult: false, toOptional: optionalWallet });
+
+        // update totalWithdrawn && fetch updated treasury_profits
+        totalWithdrawn += tresuryProfitsAfterInitialProfitTaking;
+        let tresuryProfitsAfterSecondFullTreasuryProfitWithdrawal = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+
+        // note since optionalWallet was used for taking profits on second take, rewards are sent to him
+        let optionalWalletSolBalanceAfterSecondTake = Number(svm.getBalance(optionalWallet));
+
+        // treasury's sol balance after all take profit txs
+        let treasurySolBalanceAfterBothTakes = Number(svm.getBalance(globalPDA)); // note globalPDA == treasury
 
 
+        //// assertions
+        assert(adminSolBalanceAfterInitialTake == (adminSolBalanceBeforeInitialTake + initialWithdraw) - constants.txFeeInLamports, "admin must receive profits directly when no optional wallet is specified");
 
-    //@main__important ::  take protocol_protis ---? admin cant drain more than that ??? + need another challenge on going where some slashed .....UUU above one setup similar ??/
+        assert(optionalWalletSolBalanceAfterSecondTake == optionalWalletSolBalanceBeforeSecondTake + tresuryProfitsAfterInitialProfitTaking, "profits must be sent to the optional wallet when provided as receiver");
+
+        assert(tresuryProfitsAfterSecondFullTreasuryProfitWithdrawal == initialTotalTreasuryProfits - totalWithdrawn, "treasury profits must decrease by the total withdrawn amount");
+
+        assert(treasurySolBalanceAfterBothTakes == treasurySolBalanceBeforeBothTakes - totalWithdrawn, "treasury SOL balance must reduce exactly by the total withdrawn");
+
+    });
+
+    it("should restrict protocol profit withdrawal to admin only", async () => {
+
+        let challengeId = 1;
+
+        await userflows.teleport___BergClaimedWinnerRewards(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        // berg as non-admin tries to take protocol profits
+        let bergTakingProtocolProfitsTx = await methods.takeProtocolProfits(svm, programId, 1, berg, { logTxResult: false });
+
+        // assertion
+        assert(txCheck.isFailedTransaction(bergTakingProtocolProfitsTx), "non-admin cannot withdraw protocol profits");
+    });
+
+    it("should maintain treasury solvency by allowing admin to withdraw only earned protocol profits, not the full treasury balance", async () => {
+
+        let challengeId = 1;
+
+        await userflows.teleport___BergClaimedWinnerRewards(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        let treasuryProfits = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+        let treasurySOLBalance = Number(svm.getBalance(globalPDA)); // since globalPDA == globalPDAData.treasury
+
+        //admin tries to withdraw more than treasury profits
+        let adminProtocolDrainTx = await methods.takeProtocolProfits(svm, programId, treasurySOLBalance, admin, { logTxResult: false });
+
+        //// assertion
+        assertion.strictEqual(treasurySOLBalance > treasuryProfits, txCheck.isFailedTransaction(adminProtocolDrainTx), "treasury solvency must be maintained: admin cannot withdraw beyond earned treasury profits");
+    });
 
 
 });
