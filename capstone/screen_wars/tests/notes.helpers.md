@@ -6,7 +6,7 @@ console.log("Debugging Transaction status:", "err" in result ? `${result.err().t
 ```
 
 
-#### i64 matches with le 8.... buffer encoding
+#### i64 && u64 matches with le 8.... buffer encoding ... since 8*8 = 64 ?
 - for serializing i64 integers you will need 8 byte lil endian formatting
 ```ts
 // typescript test
@@ -15,6 +15,8 @@ let startTime = new BN(_startTime).toArrayLike(Buffer, "le", 8);
 // assume rust
 fn start(ctx: Context<Assume>, startTime: i64) -> Result<()> {}
 ```
+
+- similarly for u128 or i128 ::: `(Buffer, "le", "16")` // 16*8 == 128!
 
 #### Arthematic operation between BigInt type and normal js types lead unexpected results
 
