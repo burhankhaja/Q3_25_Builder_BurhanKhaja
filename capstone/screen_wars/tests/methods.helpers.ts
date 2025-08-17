@@ -7,10 +7,11 @@ import {
     TransactionInstruction,
     SystemProgram
 } from "@solana/web3.js";
-import { Buffer } from 'node:buffer';
+import { Buffer, constants } from 'node:buffer';
 import { BN } from "bn.js";
 
 import * as state from "./state.helpers";
+import * as constant from "./constants.helpers";
 
 
 export async function initialize(svm: LiteSVM, programId: PublicKey, admin: Keypair, globalPDA: PublicKey) {
@@ -295,7 +296,6 @@ export async function claimWinnerPosition(
 
 }
 
-//@audit ::::::::::: start testing from here............
 export async function withdrawAndClose(
     svm: LiteSVM,
     programId: PublicKey,
@@ -466,17 +466,68 @@ export async function claimRewardsAsCreator(
 export async function takeProtocolProfits(
     svm: LiteSVM,
     programId: PublicKey,
-    amount: number,
+    _amount: number,
     admin: Keypair,
-    globalPDA: PublicKey,
-) { 
+    options: {
+        logTxResult?: boolean,
+        toOptional?: PublicKey
+    } = {}
+) {
+    const { logTxResult = false, toOptional } = options;
 
-    //// params
-    // amounts : u64
+    let discriminator = Buffer.from([189, 193, 172, 48, 203, 21, 248, 147]);
+    let amount = new BN(_amount).toArrayLike(Buffer, "le", 8);
 
-    //// accounts
-    // admin
-    // global
-    // to_optional : Option<AccountInfo<'info>> //// @audit :: how do i serialize this "maybe try buffer(0) in that place"
-    // system_program
+
+    
+    // data
+    const data = Buffer.concat([
+        discriminator,
+        amount,
+    ]);
+
+    //// Accounts
+    const [globalPDA] = await state.getGlobalPDAAddressAndBump(programId);
+
+    // keys
+    const keys = [
+        { pubkey: admin.publicKey, isSigner: true, isWritable: true }, // admin
+        { pubkey: globalPDA, isSigner: false, isWritable: true },     // global
+    ];
+
+    // if optional account is provided funds are sent to that else to admin
+    if (toOptional) {
+        keys.push({ pubkey: toOptional, isSigner: false, isWritable: true });
+    } else {
+        // issue :: fails to represent None with defaultPubkey `11111111111111111111111111111111` represents None
+        // svm.airdrop(constant.defaultPubkey, BigInt(1_000_000_000));
+        // keys.push({ pubkey: constant.defaultPubkey, isSigner: false, isWritable: true }); // returns TransactionErrorInsufficientFundsForRent
+        // @audit :: later :: How to represent Optional Account in Manual Tx bundles
+        keys.push({ pubkey: admin.publicKey, isSigner: false, isWritable: true }); //fallback if not solved
+    }
+
+    keys.push({ pubkey: SystemProgram.programId, isSigner: false, isWritable: false });
+
+
+    const ix = new TransactionInstruction({
+        keys,
+        programId,
+        data
+    });
+
+    const tx = new Transaction().add(ix);
+    tx.recentBlockhash = await svm.latestBlockhash();
+    tx.sign(admin);
+
+    const result = svm.sendTransaction(tx);
+
+    if (logTxResult) {
+        console.log("Transaction result:",
+            "err" in result
+                ? `Error: ${result.err().toString()}\nLogs: ${result.meta().logs()}`
+                : `Success\nLogs: ${result.logs()}`
+        );
+    }
+
+    return result;
 }
