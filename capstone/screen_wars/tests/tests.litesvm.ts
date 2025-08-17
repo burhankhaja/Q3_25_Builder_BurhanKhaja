@@ -3,15 +3,8 @@ import {
     Keypair,
     LAMPORTS_PER_SOL,
     PublicKey,
-    Transaction,
-    TransactionInstruction,
-    SystemProgram
 } from "@solana/web3.js";
-import * as borsh from "@coral-xyz/borsh";
-
-import { Buffer } from 'node:buffer';
-import { BN } from "bn.js";
-import { assert, timeStamp } from "node:console";
+import { assert } from "node:console";
 
 
 // helper imports
@@ -32,12 +25,14 @@ const programId = new PublicKey("4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW");
 describe("screen_wars", () => {
 
     let svm: LiteSVM;
-    let admin: Keypair;
-    let jeff: Keypair;
-    let shrinath: Keypair;
-    let berg: Keypair;
     let globalPDA: PublicKey;
     let globalPDABump: any;
+
+    let admin: Keypair;
+    let apaar: Keypair;
+    let berg: Keypair;
+    let jeff: Keypair;
+    let shrinath: Keypair;
 
 
 
@@ -52,14 +47,16 @@ describe("screen_wars", () => {
 
 
         admin = new Keypair();
+        apaar = new Keypair();
+        berg = new Keypair();
         jeff = new Keypair();
         shrinath = new Keypair();
-        berg = new Keypair();
 
         svm.airdrop(admin.publicKey, BigInt(LAMPORTS_PER_SOL));
+        svm.airdrop(apaar.publicKey, BigInt(LAMPORTS_PER_SOL));
+        svm.airdrop(berg.publicKey, BigInt(LAMPORTS_PER_SOL));
         svm.airdrop(jeff.publicKey, BigInt(LAMPORTS_PER_SOL));
         svm.airdrop(shrinath.publicKey, BigInt(LAMPORTS_PER_SOL));
-        svm.airdrop(berg.publicKey, BigInt(LAMPORTS_PER_SOL));
 
         [globalPDA, globalPDABump] = await state.getGlobalPDAAddressAndBump(programId);
     });
@@ -190,12 +187,33 @@ describe("screen_wars", () => {
 
     });
 
+    it("should reject challenge creation if the start time is less than twenty-four hours from now, more than seven days from now, or if the daily timer is longer than two hours", async () => {
+        //// initialize
+        await methods.initialize(svm, programId, admin, globalPDA);
 
-    // Test :: create Challenge failure cases: 
-    // challenge start > now + 1 day ? 
-    // challenge start < now + 7 days ? 
-    // daily challenge time < 2 hours ?
-    // @audit :: false -> tx must revert!
+        //// create challenge
+        let challengeId = 1; // since globalPDAData.challenge_ids == 1
+        let [challengePDA] = await state.getChallengePDAAddressAndBump(challengeId, programId);
+        let normalDailyTimer = constants.ONE_HOUR_IN_SECONDS;
+        let dailyTimerMoreThanTwoHours = (constants.ONE_HOUR_IN_SECONDS * 2) + 1;
+        let startTimeLessThanOneDayFromNow = await clock.now(svm);
+        let normalStartTimeWithOneDayDelay = await clock.now(svm) + constants.ONE_DAY_IN_SECONDS;
+        let startTimeMoreThanSevenDayFromNow = await clock.now(svm) + (constants.ONE_DAY_IN_SECONDS * 7);
+
+        // creating challenge without giving delay of atleast one day
+        let challengeWithoutOneDayDelayTx = await methods.createChallenge(svm, programId, startTimeLessThanOneDayFromNow, normalDailyTimer, jeff, globalPDA, challengePDA, { logTxResult: false });
+
+        // creating challenge without giving delay of atleast one day
+        let challengeWithMoreThanSevenDayDelayTx = await methods.createChallenge(svm, programId, startTimeMoreThanSevenDayFromNow, normalDailyTimer, jeff, globalPDA, challengePDA, { logTxResult: false });
+
+        // creating challenge with daily timer more than two hours
+        let challengeWithDailyTimerMoreThanTwoHourTx = await methods.createChallenge(svm, programId, normalStartTimeWithOneDayDelay, dailyTimerMoreThanTwoHours, jeff, globalPDA, challengePDA, { logTxResult: false });
+
+        //// assertions
+        assert(txCheck.isFailedTransaction(challengeWithoutOneDayDelayTx), "Challenge creation should fail if start_time is less than 24h from now");
+        assert(txCheck.isFailedTransaction(challengeWithMoreThanSevenDayDelayTx), "Challenge creation should fail if start_time exceeds 7 days from now");
+        assert(txCheck.isFailedTransaction(challengeWithDailyTimerMoreThanTwoHourTx), "Challenge creation should fail if daily timer exceeds 2 hours");
+    });
 
     it("should maintain correct state transitions when a user joins a challenge", async () => {
         // initialize
@@ -265,10 +283,25 @@ describe("screen_wars", () => {
 
     });
 
-    it.skip("users cant join 2 challenges at a time", async () => {
-        //@audit :: @dev :: @note
-        // Test users can only join one challenge at a time::::: must need of challenge creation abstraction to reduce code size :::::
-        /// @later :::: lets do it later ::: create 2 challenges, then user joins one and attempts to join another to which tx must fail
+
+    it("should prevent a user from joining more than one challenge at a time", async () => {
+
+        await userflows.adminInitializes__jeffCreatesChallenge__Shrinath_And_BergJoins(svm, programId, admin, jeff, shrinath, berg);
+
+
+        // jeff creates another challenge
+        let startTime = await clock.now(svm) + constants.ONE_DAY_IN_SECONDS;
+        let dailyTimer = constants.ONE_HOUR_IN_SECONDS;
+        let globalPDADataBefore = await state.fetchGlobalPda(svm, programId);
+        const [challengePDA] = await state.getChallengePDAAddressAndBump(globalPDADataBefore.challenge_ids, programId);
+        await methods.createChallenge(svm, programId, startTime, dailyTimer, jeff, globalPDA, challengePDA, { logTxResult: false });
+
+        // berg tries to join challenge no 2 after already enrolled in challenge 1
+        let [bergUserPDA] = await state.getUserPDAAddressAndBump(berg.publicKey, programId);
+
+        let bergSecondChallengeJoiningTx = await methods.joinChallenge(svm, programId, globalPDADataBefore.challenge_ids, berg, bergUserPDA, globalPDA, challengePDA, { logTxResult: false });
+
+        assert(txCheck.isFailedTransaction(bergSecondChallengeJoiningTx), "a user must not be allowed to participate in more than one challenge at the same time");
 
     });
 
@@ -353,13 +386,151 @@ describe("screen_wars", () => {
         assert(treasurySOLBalanceAfter == treasurySOLBalanceBefore + BigInt(10_000_000), "treasury SOL balance should increase by the slashed lamports from the user"); // globalPDA acts as treasury
     });
 
-    it.skip("should penalize the user for failing any daily challenge after the first by deducting the daily lamports plus 25% of the locked balance, and resetting their streak", async () => { });
 
-    it.skip("should not be able to sync if the challenge time has not started", async () => { });
 
-    it.skip("cant sync after end", async () => { });
-    it.skip("cant sync after already synced", async () => { });
 
+    it("should penalize the user for failing any daily challenge after the first by deducting the daily lamports plus 25% of the locked balance, and resetting their streak", async () => {
+
+        await userflows.adminInitializes__jeffCreatesChallenge__Shrinath_And_BergJoins(svm, programId, admin, jeff, shrinath, berg);
+
+        // time travel to when challenge starts
+        let challengeId = 1;
+        let challengeStartingTime = (await state.fetchChallengePda(svm, programId, challengeId)).start;
+        clock.setTimeStamp(svm, challengeStartingTime);
+
+        // shrinath passes on first day
+        await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: true,
+                days_not_synced: 0,
+                synced_today: false,
+            }
+        });
+
+        let shrinathSolBalanceBeforeFailDay = Number(svm.getBalance(shrinath.publicKey));
+        let shrianthLockedBalanceBeforeFailDay = Number((await state.fetchUserPda(svm, programId, shrinath.publicKey)).locked_balance);
+
+        let tommorrow = Number(await clock.now(svm)) + constants.ONE_DAY_IN_SECONDS;
+        clock.setTimeStamp(svm, tommorrow);
+
+        // shrinath fails on second day
+        await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: false,
+                days_not_synced: 0,
+                synced_today: false,
+            }
+        });
+
+        let shrinathSolBalanceAfterFailDay = Number(svm.getBalance(shrinath.publicKey));
+        let shrianthLockedBalanceAfterFailDay = Number((await state.fetchUserPda(svm, programId, shrinath.publicKey)).locked_balance);
+
+        assert(shrianthLockedBalanceAfterFailDay == shrianthLockedBalanceBeforeFailDay - (shrianthLockedBalanceBeforeFailDay * 0.25), "expected 25% of locked balance to be slashed after failing challenge");
+
+        assert(shrinathSolBalanceAfterFailDay == shrinathSolBalanceBeforeFailDay - (constants.DAILY_LAMPORTS + constants.txFeeInLamports), "expected daily lamport to be taken and not recorded in locked balance");
+
+        assert((await state.fetchUserPda(svm, programId, shrinath.publicKey)).streak == 0, "Users streak must be reset after failing challenge on any day");
+    });
+
+    it("should slash 25% of locked balance plus daily lamports for yesterday’s miss, but still lock today’s lamport for passing today and keep streak at 1 instead of resetting to 0", async () => {
+        let challengeId = 1;
+
+        await userflows.adminInitializes__jeffCreatesChallenge__Shrinath_And_BergJoins(svm, programId, admin, jeff, shrinath, berg);
+
+        // time travel to first day of challenge 
+        let challengeStartingTime = Number((await state.fetchChallengePda(svm, programId, challengeId)).start);
+        await clock.setTimeStamp(svm, challengeStartingTime);
+
+        // shrinath successfuly passes and locks on first day
+        await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: true,
+                days_not_synced: 0,
+                synced_today: false,
+            }
+        });
+
+        // pre state
+        let shrinathSolBalanceBefore = Number(svm.getBalance(shrinath.publicKey));
+        let shrianthLockedBalanceBefore = Number((await state.fetchUserPda(svm, programId, shrinath.publicKey)).locked_balance);
+
+        /// Assume :  shrianth misses syncing on 2nd day
+
+        // time travel to third day
+        let thirdDayOfChallenge = challengeStartingTime + (constants.ONE_DAY_IN_SECONDS * 2);
+        clock.setTimeStamp(svm, thirdDayOfChallenge);
+
+        // shrianth sync on third day while passing challnge for today
+        await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: true,
+                days_not_synced: 1,
+                synced_today: false,
+            }
+        });
+
+
+        // post state
+        let shrinathSolBalanceAfter = Number(svm.getBalance(shrinath.publicKey));
+        let shrianthLockedBalanceAfter = Number((await state.fetchUserPda(svm, programId, shrinath.publicKey)).locked_balance);
+
+        //// assertions
+        assert(shrianthLockedBalanceAfter == shrianthLockedBalanceBefore - (shrianthLockedBalanceBefore * 0.25) + constants.DAILY_LAMPORTS, "expected 25% of locked balance to be slashed and then incremented with todays locked balance since user passed the challenge today");
+
+        assert(shrinathSolBalanceAfter == shrinathSolBalanceBefore - ((constants.DAILY_LAMPORTS * 2) + constants.txFeeInLamports), "expected 2 days of daily lamport to be taken from user, including txfee");
+
+        assert((await state.fetchUserPda(svm, programId, shrinath.publicKey)).streak == 1, "Users streak must be exactly 1 because previous ones are reset while today one is counted");
+
+
+    });
+
+    it("should reject sync attempts before challenge start, after challenge end, or if user already synced today", async () => {
+
+        let challengeId = 1;
+
+        await userflows.adminInitializes__jeffCreatesChallenge__Shrinath_And_BergJoins(svm, programId, admin, jeff, shrinath, berg);
+
+        // challenge not started 
+        let syncBeforeChallengeStartTx = await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: false,
+                days_not_synced: 0,
+                synced_today: false,
+            }
+        });
+
+        // time travel to challeng start
+        let challengeStartingTime = Number((await state.fetchChallengePda(svm, programId, challengeId)).start);
+        await clock.setTimeStamp(svm, challengeStartingTime);
+
+        // user already synced
+        let syncAfterAlreadySyncedTx = await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: true,
+                days_not_synced: 0,
+                synced_today: true,
+            }
+        });
+
+        // time travel to challeng end
+        let challengeEndTime = Number((await state.fetchChallengePda(svm, programId, challengeId)).end);
+        await clock.setTimeStamp(svm, challengeEndTime);
+
+        // travel to challenge end 
+        let syncAfterChallengeEndTx = await methods.syncAndLock(svm, programId, challengeId, shrinath, {
+            logTxResult: false, debug: {
+                user_passed: true,
+                days_not_synced: 1,
+                synced_today: false,
+            }
+        });
+
+        //// assertions
+        assert(txCheck.isFailedTransaction(syncBeforeChallengeStartTx), "user must not be able to sync before the challenge starts");
+        assert(txCheck.isFailedTransaction(syncAfterAlreadySyncedTx), "user must not be able to sync more than once in the same day");
+        assert(txCheck.isFailedTransaction(syncAfterChallengeEndTx), "user must not be able to sync after the challenge has ended");
+
+    });
 
     it("should allow the highest streak holder to claim the winner position and prevent lower streak overrides", async () => {
         let challengeId = 1;
@@ -435,37 +606,192 @@ describe("screen_wars", () => {
 
     })
 
-    it.skip("fail: non enrolled user tries to claim", async () => { });
+    it("should prevent non-enrolled users from claiming the winner position of a challenge", async () => {
+        let firstChallengeId = 1;
+        let secondChallengeId = 2;
+
+        // challenge id == 1,  is in contention phase , berg has more streak than shrinath
+        await userflows.teleportToChallengeEnd_____BergOutstreaksShrinath(svm, programId, admin, jeff, shrinath, berg, firstChallengeId);
+
+        // challenge id == 2, is still active with apaar having positive streak and locked balance
+        await userflows.secondChallengeCreatedByBerg____JoinedAndLockedByApaar(svm, programId, berg, apaar, secondChallengeId);
 
 
-    //@
-    it("withdraw test", async () => {
+        // apaar tries to claim winner position of the challenge in which she is not enrolled in
+        let nonEnrolledWinnerClaimTx = await methods.claimWinnerPosition(svm, programId, firstChallengeId, apaar, { logTxResult: false });
+
+        //// assertion
+        assert(txCheck.isFailedTransaction(nonEnrolledWinnerClaimTx), "non-enrolled users must not be able to claim the winner position");
+
+    });
+
+    it("should correctly decrease treasury and user balances and close the UserPDA on withdrawal", async () => {
+        let challengeId = 1;
+
+
+        // teleport to reward claiming phase
+        await userflows.teleportToRewardClaimingPhase_________bergDeclaredWinner(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        //// pre withdraw state
+        let txFeeInLamports = 5_000;
+        let [bergUserPDA] = await state.getUserPDAAddressAndBump(berg.publicKey, programId);
+        let bergLockedBalance = Number((await state.fetchUserPda(svm, programId, berg.publicKey)).locked_balance);
+        let bergSOLBalanceBefore = Number(svm.getBalance(berg.publicKey));
+        let treasurySOLBalanceBefore = Number(svm.getBalance(globalPDA));
+        let bergUserPDARentBefore = Number(svm.getBalance(bergUserPDA));
+
+
+        // withdraw
+        await methods.withdrawAndClose(svm, programId, challengeId, berg, { logTxResult: false });
+
+
+        // post withdraw state
+        let bergUserPDARentAfter = Number(svm.getBalance(bergUserPDA));
+        let bergSOLBalanceAfter = Number(svm.getBalance(berg.publicKey));
+        let treasurySOLBalanceAfter = Number(svm.getBalance(globalPDA));
+
+        //// assertions
+        assert(bergUserPDARentAfter == 0, "UserPDA rent must be zero after withdrawal, indicating the PDA has been closed.");
+        assert(treasurySOLBalanceAfter == treasurySOLBalanceBefore - bergLockedBalance, "Treasury balance should decrease by the withdrawing user's locked balance");
+        assert(bergSOLBalanceAfter == (bergSOLBalanceBefore + bergLockedBalance + bergUserPDARentBefore) - txFeeInLamports, "Berg's SOL balance should reflect the sum of his locked balance and rent from the closed PDA, minus the transaction fee.");
+    });
+
+    it("should prevent users from withdrawing locked balance from an active challenge by exploiting another challenge’s reward phase ", async () => {
+        let firstChallengeId = 1;
+        let secondChallengeId = 2;
+
+        // challenge id == 1,  is in contention phase , berg has more streak than shrinath
+        await userflows.teleportToChallengeEnd_____BergOutstreaksShrinath(svm, programId, admin, jeff, shrinath, berg, firstChallengeId);
+
+        // challenge id == 2, is still active with apaar having positive streak and locked balance
+        await userflows.secondChallengeCreatedByBerg____JoinedAndLockedByApaar(svm, programId, berg, apaar, secondChallengeId);
+
+        // time travel to challenge Id 1's reward claiming phase
+        let now = await clock.now(svm);
+        let firstChallengeEnd = Number((await state.fetchChallengePda(svm, programId, firstChallengeId)).end);
+        let firstChallengeRewardClaimingPhase = firstChallengeEnd + (constants.ONE_DAY_IN_SECONDS * 5) + 1;
+        await clock.setTimeStamp(svm, firstChallengeRewardClaimingPhase);
+
+        // apaar tries to withdraw in challenge id 1's withdraw timeline, in which he is not enrolled in
+        let nonEnrolledUserWithdrawTx = await methods.withdrawAndClose(svm, programId, firstChallengeId, apaar, { logTxResult: false });
+
+        //// assertion
+        assert(txCheck.isFailedTransaction(nonEnrolledUserWithdrawTx), "users must not be able to withdraw from an active challenge by piggybacking on another challenge’s end timeline");
+    });
+
+
+    it("should prevent withdrawals and reward claiming before the contention period ends", async () => {
         let challengeId = 1;
 
         // teleport to reward claiming phase
         await userflows.teleportToRewardClaimingPhase_________bergDeclaredWinner(svm, programId, admin, jeff, shrinath, berg, challengeId);
 
-        // withdraw
-        // claimRewardAsWinner
-        // claimRewardAsCreator
-        
-        // then withdraw + claimRewardAs Winner ====> take_protocol_profits
+        // time travel back to contention period
+        let contentionPeriod = (await clock.now(svm)) - 1;
+        await clock.setTimeStamp(svm, contentionPeriod);
+
+        // berg tries to withdraw
+        let bergWithdrawalTx = await methods.withdrawAndClose(svm, programId, challengeId, berg, { logTxResult: false });
+
+        // berg tries to claim winner rewards
+        let bergWinnerRewardClaimingTx = await methods.claimRewardsAsWinner(svm, programId, challengeId, berg, { logTxResult: false });
+
+        // jeff tries to claim creator rewards
+        let jeffCreatorRewardClaimingTx = await methods.claimRewardsAsCreator(svm, programId, challengeId, jeff, { logTxResult: false });
+
+
+        assert(txCheck.isFailedTransaction(bergWithdrawalTx), "withdrawal should fail if attempted before the contention period ends");
+        assert(txCheck.isFailedTransaction(bergWinnerRewardClaimingTx), "winner should not be able to claim rewards before contention period is over");
+        assert(txCheck.isFailedTransaction(jeffCreatorRewardClaimingTx), "creator should not be able to claim rewards before contention period is over");
+    });
+
+    it("should allow only the winner and challenge creator to claim their respective rewards, and only once", async () => {
+        let challengeId = 1;
+
+        // teleport to reward claiming phase
+        await userflows.teleportToRewardClaimingPhase_________bergDeclaredWinner(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        // winner reward claims
+        let bergFirstClaim = await methods.claimRewardsAsWinner(svm, programId, challengeId, berg, { logTxResult: false });
+
+        let bergSecondClaim = await methods.claimRewardsAsWinner(svm, programId, challengeId, berg, { logTxResult: false }); // attempt second claim
+
+        // creator reward claims
+        let jeffFirstClaim = await methods.claimRewardsAsCreator(svm, programId, challengeId, jeff, { logTxResult: false });
+
+        let jeffSecondClaim = await methods.claimRewardsAsCreator(svm, programId, challengeId, jeff, { logTxResult: false }); // attempt second claim
+
+        // unauthorized claims
+        let shrinathClaim = await methods.claimRewardsAsWinner(svm, programId, challengeId, shrinath, { logTxResult: false });
+        let adminClaim = await methods.claimRewardsAsCreator(svm, programId, challengeId, admin, { logTxResult: false });
+
+
+        //// assertions
+        assert(txCheck.isSuccessfulTransaction(bergFirstClaim), "first winner reward claim should succeed for Berg");
+        assert(txCheck.isSuccessfulTransaction(jeffFirstClaim), "first creator reward claim should succeed for Jeff");
+
+        assert(txCheck.isFailedTransaction(bergSecondClaim), "second winner reward claim should fail for Berg");
+        assert(txCheck.isFailedTransaction(jeffSecondClaim), "second creator reward claim should fail for Jeff");
+
+        assert(txCheck.isFailedTransaction(shrinathClaim), "unauthorized winner reward claim should fail for Shrinath");
+        assert(txCheck.isFailedTransaction(adminClaim), "unauthorized creator reward claim should fail for Admin");
+    });
+
+    it("should correctly update state, treasury profits, distribute winner and creator rewards, and close the challenge account", async () => {
+        let challengeId = 1;
+        const [challengePDA] = await state.getChallengePDAAddressAndBump(challengeId, programId);
+
+
+        // teleport to reward claiming phase
+        await userflows.teleportToRewardClaimingPhase_________bergDeclaredWinner(svm, programId, admin, jeff, shrinath, berg, challengeId);
+
+        // pre state
+        let txFeeInLamports = 5_000;
+        let totalSlashed = Number((await state.fetchChallengePda(svm, programId, challengeId)).total_slashed);
+        let Percent50OfTotalSlashed = 0.5 * totalSlashed;
+        let Percent40OfTotalSlashed = 0.4 * totalSlashed;
+        let Percent10OfTotalSlashed = 0.1 * totalSlashed;
+
+        let creatorSolBalanceBefore = Number(svm.getBalance(jeff.publicKey));
+        let winnerSolBalanceBefore = Number(svm.getBalance(berg.publicKey));
+        let treasuryProfitsBefore = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+        let challengePDARentBefore = Number(svm.getBalance(challengePDA));
+
+        // creator claim
+        await methods.claimRewardsAsCreator(svm, programId, challengeId, jeff, { logTxResult: false });
+
+        // winner claim :: note he will get rent from closing challenge account, since the last one to claim among creator and winner gets to keep the rent
+        await methods.claimRewardsAsWinner(svm, programId, challengeId, berg, { logTxResult: false });
+
+        //// post state
+        let creatorSolBalanceAfter = Number(svm.getBalance(jeff.publicKey));
+        let winnerSolBalanceAfter = Number(svm.getBalance(berg.publicKey));
+        let treasuryProfitsAfter = Number((await state.fetchGlobalPda(svm, programId)).treasury_profits);
+        let challengePDAData = await state.fetchChallengePda(svm, programId, 1, { consoleLog: false });
+        let challengePDARentAfter = Number(svm.getBalance(challengePDA));
 
 
 
+        //// assertions
+        assert(challengePDAData.winner == constants.defaultPubkey.toBase58(), "winner should reset to default pubkey after claiming to prevent multiple claims");
+        assert(challengePDAData.creator == constants.defaultPubkey.toBase58(), "creator should reset to default pubkey after claiming to prevent multiple claims");
+        assert(challengePDAData.winner_has_claimed, "winner_has_claimed flag should be true after claiming");
+        assert(challengePDAData.creator_has_claimed, "creator_has_claimed flag should be true after claiming");
 
+        assert(treasuryProfitsAfter == treasuryProfitsBefore + Percent40OfTotalSlashed, "treasury profits should increase by 40% of total slashed after reward claims");
+        assert(creatorSolBalanceAfter == (creatorSolBalanceBefore + Percent10OfTotalSlashed) - txFeeInLamports, "creator should receive 10% of total slashed as rewards");
 
-        //// fetch states
-        await state.fetchUserPda(svm, programId, berg.publicKey, { consoleLog: true })
-        await state.fetchUserPda(svm, programId, shrinath.publicKey, { consoleLog: true })
-        await state.fetchChallengePda(svm, programId, 1, { consoleLog: true });
+        assert(winnerSolBalanceAfter == (winnerSolBalanceBefore + Percent50OfTotalSlashed + challengePDARentBefore) - txFeeInLamports, "winner should receive 50% of total slashed plus challenge PDA rent as rewards (since he closed challenge account by claiming after creator)");
 
-
+        assert(challengePDARentAfter == 0, "challenge account must be fully drained to be recognized as closed by the runtime");
     });
 
 
-    // it("", async() => {});
 
+
+
+
+    //@main__important ::  take protocol_protis ---? admin cant drain more than that ??? + need another challenge on going where some slashed .....UUU above one setup similar ??/
 
 
 });
