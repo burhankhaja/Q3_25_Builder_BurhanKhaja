@@ -12,8 +12,8 @@ screen_wars = "4jqrWDfeR2RAzSPYNoiVq2dcVrZUrsp3ZWEPHehVwCtW"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "http://127.0.0.1:8899"
-wallet = "~/.config/solana/id.json"
+cluster = "https://api.devnet.solana.com" #"http://127.0.0.1:8899"
+wallet = "~/.config/solana/id.json" #"../../wallets/Turbin3-wallet.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
