@@ -2,7 +2,6 @@ use crate::{error::Errors, state::Global};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
-#[instruction(_challenge_id: u32)]
 pub struct ToggleChallengeCreation<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
