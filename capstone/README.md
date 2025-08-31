@@ -1,0 +1,1 @@
+**This Capstone project was submitted by me for the Builders Q3 cohort. Screen Wars is an on-chain dApp where users compete to reduce their phone usage and, in return, can earn thousands of dollars while improving their mental well-being.**
